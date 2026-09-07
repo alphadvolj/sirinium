@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Sirinium</string>
+    <string name="app_name_custom">Zernovium</string>
+    <string name="channel_lessons_name">Напоминания о парах</string>
+    <string name="channel_lessons_desc">Уведомления за 10–15 минут до начала учебных занятий</string>
+    <string name="widget_compact_name">Текущая пара (2х2)</string>
+    <string name="widget_compact_desc">Ближайшая пара и таймер обратного отсчета</string>
+    <string name="widget_list_name">Расписание на день (4х3)</string>
+    <string name="widget_list_desc">Список занятий на сегодня или завтра с прокруткой</string>
+</resources>
