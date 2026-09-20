@@ -2,7 +2,14 @@ package com.dlab.sirinium.platform
 
 import com.dlab.sirinium.core.util.DateTimeUtils
 import com.dlab.sirinium.domain.model.Lesson
+import com.dlab.sirinium.domain.repository.ScheduleRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSUserDefaults
 import platform.Foundation.NSURL
 import platform.UIKit.UIActivityViewController
@@ -175,10 +182,10 @@ private data class IosWidgetLessonPayload(
 
 class IosWidgetUpdater(
     private val settings: PlatformSettings,
-    private val repository: com.dlab.sirinium.domain.repository.ScheduleRepository
+    private val repository: ScheduleRepository
 ) : PlatformWidgetUpdater {
-    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default)
-    private val jsonFormatter = kotlinx.serialization.json.Json {
+    private val scope = CoroutineScope(Dispatchers.Default)
+    private val jsonFormatter = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
@@ -209,7 +216,7 @@ class IosWidgetUpdater(
                         )
                     }
                 )
-                val jsonString = jsonFormatter.encodeToString(payload)
+                val jsonString = jsonFormatter.encodeToString(IosWidgetPayload.serializer(), payload)
 
                 // 1. App Group shared container for WidgetExtension
                 val groupDefaults = NSUserDefaults(suiteName = "group.com.dlab.sirinium")
@@ -222,7 +229,7 @@ class IosWidgetUpdater(
                 standardDefaults.synchronize()
 
                 // 3. Post notification for Swift to call WidgetCenter.shared.reloadAllTimelines()
-                platform.Foundation.NSNotificationCenter.defaultCenter.postNotificationName("ReloadWidgetsNotification", null)
+                NSNotificationCenter.defaultCenter.postNotificationName("ReloadWidgetsNotification", null)
             } catch (e: Exception) {
                 println("[IosWidgetUpdater] Error updating widget: ${e.message}")
             }
@@ -235,7 +242,7 @@ actual fun createPlatformActions(): PlatformActions = IosPlatformActions()
 actual fun createPlatformAlarmScheduler(): PlatformAlarmScheduler = IosAlarmScheduler()
 actual fun createPlatformWidgetUpdater(
     settings: PlatformSettings,
-    repository: com.dlab.sirinium.domain.repository.ScheduleRepository
+    repository: ScheduleRepository
 ): PlatformWidgetUpdater = IosWidgetUpdater(settings, repository)
 
 @androidx.compose.runtime.Composable
