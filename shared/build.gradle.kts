@@ -27,6 +27,7 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "SharedApp"
             isStatic = true
+            binaryOption("bundleId", "com.dlab.sirinium.shared")
         }
     }
 

@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: macos-14
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx8192m -XX:+UseG1GC"
 
     steps:
     - uses: actions/checkout@v4
