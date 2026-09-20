@@ -127,7 +127,11 @@ private fun IosCrashFallback(
 
 fun MainViewController(): UIViewController {
     startKoin()
-    return ComposeUIViewController {
+    return ComposeUIViewController(
+        configure = {
+            enforceStrictPlistSanityCheck = false
+        }
+    ) {
         var crashLog by remember {
             mutableStateOf(
                 NSUserDefaults.standardUserDefaults.stringForKey(KEY_CRASH_LOG)

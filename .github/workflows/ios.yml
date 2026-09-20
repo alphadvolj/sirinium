@@ -53,9 +53,9 @@ jobs:
           cp -r "$APP_PATH" build/Payload/
           echo "Applying ad-hoc code signature for sideloading/TrollStore/AltStore..."
           if [ -d "build/Payload/iosApp.app/PlugIns" ]; then
-            find "build/Payload/iosApp.app/PlugIns" -name "*.appex" -exec codesign --force --sign - {} \; 2>/dev/null || true
+            find "build/Payload/iosApp.app/PlugIns" -name "*.appex" -exec codesign --force --sign - --generate-entitlement-der {} \; 2>/dev/null || true
           fi
-          codesign --force --sign - "build/Payload/iosApp.app"
+          codesign --force --sign - --generate-entitlement-der "build/Payload/iosApp.app"
           cd build
           zip -r -y Sirinium.ipa Payload
           cd ..
@@ -65,7 +65,7 @@ jobs:
           mkdir -p build/Payload
           cp -r "$APP_PATH" build/Payload/
           rm -rf "build/Payload/iosApp.app/PlugIns"
-          codesign --force --sign - "build/Payload/iosApp.app"
+          codesign --force --sign - --generate-entitlement-der "build/Payload/iosApp.app"
           cd build
           zip -r -y Sirinium-NoWidgets.ipa Payload
           cd ..
