@@ -179,6 +179,17 @@ struct SiriniumTimelineProvider: TimelineProvider {
     }
 }
 
+extension View {
+    @ViewBuilder
+    func widgetBackground(_ color: Color) -> some View {
+        if #available(iOS 17.0, *) {
+            self.containerBackground(color, for: .widget)
+        } else {
+            self.background(color)
+        }
+    }
+}
+
 // MARK: - Widget Views
 struct SiriniumScheduleWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
@@ -200,7 +211,7 @@ struct SiriniumScheduleWidgetEntryView: View {
                 SmallWidgetView(entry: entry, bgDark: bgDark, cardDark: cardDark, accentIndigo: accentIndigo, accentTeal: accentTeal)
             }
         }
-        .containerBackground(bgDark, for: .widget)
+        .widgetBackground(bgDark)
         .widgetURL(URL(string: "sirinium://schedule"))
     }
 }
@@ -439,7 +450,6 @@ struct SiriniumScheduleWidget: Widget {
         .configurationDisplayName("Расписание занятий")
         .description("Текущая и ближайшие пары для вашей группы, преподавателя или аудитории.")
         .supportedFamilies([.systemSmall, .systemMedium])
-        .contentMarginsDisabled()
     }
 }
 
