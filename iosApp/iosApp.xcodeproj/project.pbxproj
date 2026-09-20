@@ -10,6 +10,9 @@
 		A10000000000000000000021 /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* iOSApp.swift */; };
 		A10000000000000000000022 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* ContentView.swift */; };
 		A10000000000000000000023 /* SharedApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* SharedApp.framework */; };
+		A10000000000000000000024 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* Assets.xcassets */; };
+		A10000000000000000000025 /* SiriniumWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000018 /* SiriniumWidget.swift */; };
+		A10000000000000000000026 /* SiriniumWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* SiriniumWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +21,10 @@
 		A10000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000014 /* iosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000015 /* SharedApp.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SharedApp.framework; path = "../shared/build/xcode-frameworks/SharedApp.framework"; sourceTree = "<group>"; };
+		A10000000000000000000016 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A10000000000000000000017 /* SiriniumWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SiriniumWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000018 /* SiriniumWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriniumWidget.swift; sourceTree = "<group>"; };
+		A10000000000000000000019 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -29,6 +36,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000036 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -36,6 +50,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000042 /* iosApp */,
+				A10000000000000000000045 /* SiriniumWidget */,
 				A10000000000000000000044 /* Frameworks */,
 				A10000000000000000000043 /* Products */,
 			);
@@ -47,6 +62,7 @@
 				A10000000000000000000011 /* iOSApp.swift */,
 				A10000000000000000000012 /* ContentView.swift */,
 				A10000000000000000000013 /* Info.plist */,
+				A10000000000000000000016 /* Assets.xcassets */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -55,6 +71,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000014 /* iosApp.app */,
+				A10000000000000000000017 /* SiriniumWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -65,6 +82,15 @@
 				A10000000000000000000015 /* SharedApp.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000045 /* SiriniumWidget */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000018 /* SiriniumWidget.swift */,
+				A10000000000000000000019 /* Info.plist */,
+			);
+			path = SiriniumWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -78,15 +104,34 @@
 				A10000000000000000000032 /* Sources */,
 				A10000000000000000000033 /* Frameworks */,
 				A10000000000000000000034 /* Resources */,
+				A10000000000000000000038 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A10000000000000000000081 /* PBXTargetDependency */,
 			);
 			name = iosApp;
 			productName = iosApp;
 			productReference = A10000000000000000000014 /* iosApp.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A10000000000000000000003 /* SiriniumWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000053 /* Build configuration list for PBXNativeTarget "SiriniumWidgetExtension" */;
+			buildPhases = (
+				A10000000000000000000035 /* Sources */,
+				A10000000000000000000036 /* Frameworks */,
+				A10000000000000000000037 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SiriniumWidgetExtension;
+			productName = SiriniumWidgetExtension;
+			productReference = A10000000000000000000017 /* SiriniumWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -99,6 +144,9 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					A10000000000000000000002 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					A10000000000000000000003 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -117,12 +165,53 @@
 			projectRoot = "";
 			targets = (
 				A10000000000000000000002 /* iosApp */,
+				A10000000000000000000003 /* SiriniumWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		A10000000000000000000038 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A10000000000000000000026 /* SiriniumWidgetExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		A10000000000000000000082 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000000000000000000003;
+			remoteInfo = SiriniumWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		A10000000000000000000081 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000000000000000000003 /* SiriniumWidgetExtension */;
+			targetProxy = A10000000000000000000082 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin PBXResourcesBuildPhase section */
 		A10000000000000000000034 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000024 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000037 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -160,6 +249,14 @@
 			files = (
 				A10000000000000000000021 /* iOSApp.swift in Sources */,
 				A10000000000000000000022 /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000035 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000025 /* SiriniumWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -288,6 +385,54 @@
 			};
 			name = Release;
 		};
+		A10000000000000000000065 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SiriniumWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 3.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dlab.sirinium.ios.widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A10000000000000000000066 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SiriniumWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 3.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dlab.sirinium.ios.widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -305,6 +450,15 @@
 			buildConfigurations = (
 				A10000000000000000000063 /* Debug */,
 				A10000000000000000000064 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000053 /* Build configuration list for PBXNativeTarget "SiriniumWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000065 /* Debug */,
+				A10000000000000000000066 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

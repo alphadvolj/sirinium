@@ -61,3 +61,8 @@ actual fun createPlatformActions(): PlatformActions = DesktopPlatformActions()
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {}
 
 actual fun createPlatformAlarmScheduler(): PlatformAlarmScheduler = NoOpAlarmScheduler()
+
+actual fun createPlatformWidgetUpdater(
+    settings: PlatformSettings,
+    repository: com.dlab.sirinium.domain.repository.ScheduleRepository
+): PlatformWidgetUpdater = NoOpWidgetUpdater()

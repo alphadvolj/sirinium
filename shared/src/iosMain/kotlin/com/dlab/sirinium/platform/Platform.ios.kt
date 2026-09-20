@@ -95,15 +95,20 @@ class IosPlatformActions : PlatformActions {
 
 class IosAlarmScheduler : PlatformAlarmScheduler {
     private val center = UNUserNotificationCenter.currentNotificationCenter()
+    private var isAuthRequested = false
 
-    init {
-        val options = UNAuthorizationOptionAlert or
-                UNAuthorizationOptionSound or
-                UNAuthorizationOptionBadge
-        center.requestAuthorizationWithOptions(options) { _, _ -> }
+    private fun requestNotificationPermissionIfNeeded() {
+        if (!isAuthRequested) {
+            isAuthRequested = true
+            val options = UNAuthorizationOptionAlert or
+                    UNAuthorizationOptionSound or
+                    UNAuthorizationOptionBadge
+            center.requestAuthorizationWithOptions(options) { _, _ -> }
+        }
     }
 
     override fun scheduleAlarm(lesson: Lesson, minutesBefore: Int) {
+        requestNotificationPermissionIfNeeded()
         val epochMillis = DateTimeUtils.toEpochMillis(lesson.date, lesson.startTime) ?: return
         val triggerTime = epochMillis - (minutesBefore * 60 * 1000L)
         val now = Clock.System.now().toEpochMilliseconds()
@@ -147,9 +152,91 @@ class IosAlarmScheduler : PlatformAlarmScheduler {
     }
 }
 
+@kotlinx.serialization.Serializable
+private data class IosWidgetPayload(
+    val target: String,
+    val sectionType: String,
+    val updatedAt: Long,
+    val lessons: List<IosWidgetLessonPayload>
+)
+
+@kotlinx.serialization.Serializable
+private data class IosWidgetLessonPayload(
+    val id: String,
+    val discipline: String,
+    val startTime: String,
+    val endTime: String,
+    val classroom: String,
+    val teacher: String,
+    val rawLessonType: String,
+    val numberPair: Int,
+    val date: String
+)
+
+class IosWidgetUpdater(
+    private val settings: PlatformSettings,
+    private val repository: com.dlab.sirinium.domain.repository.ScheduleRepository
+) : PlatformWidgetUpdater {
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default)
+    private val jsonFormatter = kotlinx.serialization.json.Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
+
+    override fun updateWidgets() {
+        val target = settings.getString("pref_current_target", "")
+        val section = settings.getString("pref_current_section", "group").ifBlank { "group" }
+        if (target.isBlank()) return
+
+        scope.launch {
+            try {
+                val upcoming = repository.getUpcomingLessons(target, limit = 20)
+                val payload = IosWidgetPayload(
+                    target = target,
+                    sectionType = section,
+                    updatedAt = Clock.System.now().toEpochMilliseconds(),
+                    lessons = upcoming.map {
+                        IosWidgetLessonPayload(
+                            id = it.id,
+                            discipline = it.discipline,
+                            startTime = it.startTime,
+                            endTime = it.endTime,
+                            classroom = it.classroom,
+                            teacher = it.teacher,
+                            rawLessonType = it.rawLessonType.ifBlank { it.lessonType.title },
+                            numberPair = it.numberPair,
+                            date = it.date
+                        )
+                    }
+                )
+                val jsonString = jsonFormatter.encodeToString(payload)
+
+                // 1. App Group shared container for WidgetExtension
+                val groupDefaults = NSUserDefaults(suiteName = "group.com.dlab.sirinium")
+                groupDefaults?.setObject(jsonString, forKey = "widget_schedule_data")
+                groupDefaults?.synchronize()
+
+                // 2. Standard user defaults container as fallback
+                val standardDefaults = NSUserDefaults.standardUserDefaults
+                standardDefaults.setObject(jsonString, forKey = "widget_schedule_data")
+                standardDefaults.synchronize()
+
+                // 3. Post notification for Swift to call WidgetCenter.shared.reloadAllTimelines()
+                platform.Foundation.NSNotificationCenter.defaultCenter.postNotificationName("ReloadWidgetsNotification", null)
+            } catch (e: Exception) {
+                println("[IosWidgetUpdater] Error updating widget: ${e.message}")
+            }
+        }
+    }
+}
+
 actual fun createPlatformSettings(): PlatformSettings = IosPlatformSettings()
 actual fun createPlatformActions(): PlatformActions = IosPlatformActions()
 actual fun createPlatformAlarmScheduler(): PlatformAlarmScheduler = IosAlarmScheduler()
+actual fun createPlatformWidgetUpdater(
+    settings: PlatformSettings,
+    repository: com.dlab.sirinium.domain.repository.ScheduleRepository
+): PlatformWidgetUpdater = IosWidgetUpdater(settings, repository)
 
 @androidx.compose.runtime.Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {}

@@ -20,6 +20,7 @@ import com.dlab.sirinium.platform.PlatformWidgetUpdater
 import com.dlab.sirinium.platform.createPlatformActions
 import com.dlab.sirinium.platform.createPlatformAlarmScheduler
 import com.dlab.sirinium.platform.createPlatformSettings
+import com.dlab.sirinium.platform.createPlatformWidgetUpdater
 import com.dlab.sirinium.ui.classrooms.FreeClassroomsViewModel
 import com.dlab.sirinium.ui.compare.CompareViewModel
 import com.dlab.sirinium.ui.onboarding.OnboardingViewModel
@@ -36,7 +37,6 @@ val sharedModule = module {
     single<PlatformSettings> { createPlatformSettings() }
     single<PlatformActions> { createPlatformActions() }
     single<PlatformAlarmScheduler> { createPlatformAlarmScheduler() }
-    single<PlatformWidgetUpdater> { NoOpWidgetUpdater() }
     single<PlatformIconManager> { NoOpIconManager() }
     single<PlatformSyncScheduler> { NoOpSyncScheduler() }
     single<SiriusScheduleApi> { KtorSiriusScheduleApi(get()) }
@@ -48,6 +48,7 @@ val sharedModule = module {
             noteRepository = get()
         )
     }
+    single<PlatformWidgetUpdater> { createPlatformWidgetUpdater(get(), get()) }
 
     factory {
         ScheduleViewModel(

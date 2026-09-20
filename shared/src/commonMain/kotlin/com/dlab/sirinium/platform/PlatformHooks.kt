@@ -1,6 +1,7 @@
 package com.dlab.sirinium.platform
 
 import com.dlab.sirinium.domain.model.Lesson
+import com.dlab.sirinium.domain.repository.ScheduleRepository
 
 interface PlatformAlarmScheduler {
     fun scheduleAlarm(lesson: Lesson, minutesBefore: Int = 15)
@@ -40,3 +41,8 @@ interface PlatformSyncScheduler {
 class NoOpSyncScheduler : PlatformSyncScheduler
 
 expect fun createPlatformAlarmScheduler(): PlatformAlarmScheduler
+
+expect fun createPlatformWidgetUpdater(
+    settings: PlatformSettings,
+    repository: ScheduleRepository
+): PlatformWidgetUpdater
