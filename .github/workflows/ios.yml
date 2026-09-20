@@ -23,11 +23,16 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+    - name: Cache Konan (Kotlin/Native dependencies & toolchain)
+      uses: actions/cache@v4
+      with:
+        path: ~/.konan
+        key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-konan-
+
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-
-    - name: Build Kotlin Multiplatform Framework for iOS ARM64
-      run: ./gradlew :shared:linkReleaseFrameworkIosArm64 --no-daemon
 
     - name: Build iOS App with Xcode (Unsigned)
       run: |
@@ -37,10 +42,12 @@ jobs:
                    -sdk iphoneos \
                    -destination 'generic/platform=iOS' \
                    -derivedDataPath build/DerivedData \
+                   -parallelizeTargets \
+                   COMPILER_INDEX_STORE_ENABLE=NO \
                    CODE_SIGNING_ALLOWED=NO \
                    CODE_SIGNING_REQUIRED=NO \
                    CODE_SIGN_IDENTITY="" \
-                   clean build
+                   build
 
     - name: Package IPA
       run: |
