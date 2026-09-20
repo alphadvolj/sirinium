@@ -72,7 +72,7 @@ fun MainScreen(
     compareViewModel: CompareViewModel,
     freeClassroomsViewModel: FreeClassroomsViewModel,
     settingsViewModel: SettingsViewModel,
-    appUpdateViewModel: AppUpdateViewModel = org.koin.compose.koinInject(),
+    appUpdateViewModel: AppUpdateViewModel? = null,
     onRestartOnboarding: () -> Unit = {},
     onOpenFeedback: () -> Unit = {},
     onOpenTutorial: () -> Unit = {},
@@ -82,6 +82,10 @@ fun MainScreen(
     tutorialOverlay: (@Composable (selectedTab: NavigationTab, onTabSelected: (NavigationTab) -> Unit, tutorialBoundsMap: Map<TutorialTargetKey, Rect>, onDismiss: () -> Unit) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val resolvedAppUpdateViewModel: AppUpdateViewModel? = appUpdateViewModel ?: runCatching {
+        org.koin.compose.koinInject<AppUpdateViewModel>()
+    }.getOrNull()
+
     var selectedTab by rememberSaveable { mutableStateOf(NavigationTab.SCHEDULE) }
     var showOfflineDialog by rememberSaveable { mutableStateOf(false) }
     var isTutorialVisible by rememberSaveable(showTutorial) { mutableStateOf(showTutorial) }
@@ -93,7 +97,7 @@ fun MainScreen(
     }
 
     val scheduleState by scheduleViewModel.uiState.collectAsState()
-    val updateState by appUpdateViewModel.uiState.collectAsState()
+    val updateState by (resolvedAppUpdateViewModel?.uiState ?: remember { kotlinx.coroutines.flow.MutableStateFlow(com.dlab.sirinium.ui.update.AppUpdateUiState()) }).collectAsState()
     val platformActions = LocalPlatformActions.current
 
     val tutorialBoundsMap = remember { mutableStateMapOf<TutorialTargetKey, Rect>() }
@@ -242,7 +246,7 @@ fun MainScreen(
                 isTodayVisible = isTodayVisible,
                 onTodayClick = { scheduleViewModel.onIntent(ScheduleUiIntent.ChangeDate(todayStr)) },
                 isUpdateAvailableVisible = updateState.isUpdateAvailable,
-                onUpdateClick = { appUpdateViewModel.openUpdateScreenManually() },
+                onUpdateClick = { resolvedAppUpdateViewModel?.openUpdateScreenManually() },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
 
@@ -269,7 +273,7 @@ fun MainScreen(
                 updateState.appInfo?.let { info ->
                     AppInfoScreen(
                         info = info,
-                        onDismiss = { appUpdateViewModel.dismissInfo() }
+                        onDismiss = { resolvedAppUpdateViewModel?.dismissInfo() }
                     )
                 }
             }
@@ -283,7 +287,7 @@ fun MainScreen(
                 updateState.updateInfo?.let { update ->
                     AppUpdateScreen(
                         update = update,
-                        onSnooze = { appUpdateViewModel.snoozeUpdate() }
+                        onSnooze = { resolvedAppUpdateViewModel?.snoozeUpdate() }
                     )
                 }
             }

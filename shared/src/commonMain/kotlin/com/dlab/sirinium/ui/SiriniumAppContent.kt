@@ -19,16 +19,47 @@ import com.dlab.sirinium.ui.schedule.ScheduleViewModel
 import com.dlab.sirinium.ui.settings.SettingsViewModel
 import com.dlab.sirinium.ui.theme.SiriniumTheme
 import com.dlab.sirinium.ui.update.AppUpdateViewModel
+import org.koin.compose.KoinContext
 import org.koin.compose.koinInject
 
 @Composable
 fun SiriniumAppContent(
-    scheduleViewModel: ScheduleViewModel = koinInject(),
-    compareViewModel: CompareViewModel = koinInject(),
-    freeClassroomsViewModel: FreeClassroomsViewModel = koinInject(),
-    settingsViewModel: SettingsViewModel = koinInject(),
-    appUpdateViewModel: AppUpdateViewModel = koinInject(),
-    onboardingViewModel: OnboardingViewModel = koinInject(),
+    modifier: Modifier = Modifier,
+    onRestartOnboarding: () -> Unit = {},
+    onOpenFeedback: () -> Unit = {},
+    onRequestNotificationPermission: () -> Unit = {}
+) {
+    KoinContext {
+        val scheduleViewModel: ScheduleViewModel = koinInject()
+        val compareViewModel: CompareViewModel = koinInject()
+        val freeClassroomsViewModel: FreeClassroomsViewModel = koinInject()
+        val settingsViewModel: SettingsViewModel = koinInject()
+        val appUpdateViewModel: AppUpdateViewModel = koinInject()
+        val onboardingViewModel: OnboardingViewModel = koinInject()
+
+        SiriniumAppContent(
+            scheduleViewModel = scheduleViewModel,
+            compareViewModel = compareViewModel,
+            freeClassroomsViewModel = freeClassroomsViewModel,
+            settingsViewModel = settingsViewModel,
+            appUpdateViewModel = appUpdateViewModel,
+            onboardingViewModel = onboardingViewModel,
+            onRestartOnboarding = onRestartOnboarding,
+            onOpenFeedback = onOpenFeedback,
+            onRequestNotificationPermission = onRequestNotificationPermission,
+            modifier = modifier
+        )
+    }
+}
+
+@Composable
+fun SiriniumAppContent(
+    scheduleViewModel: ScheduleViewModel,
+    compareViewModel: CompareViewModel,
+    freeClassroomsViewModel: FreeClassroomsViewModel,
+    settingsViewModel: SettingsViewModel,
+    appUpdateViewModel: AppUpdateViewModel,
+    onboardingViewModel: OnboardingViewModel,
     onRestartOnboarding: () -> Unit = {},
     onOpenFeedback: () -> Unit = {},
     onRequestNotificationPermission: () -> Unit = {},

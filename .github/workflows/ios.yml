@@ -47,16 +47,29 @@ jobs:
         APP_PATH=$(find build/DerivedData -name "iosApp.app" -type d | head -n 1)
         if [ -n "$APP_PATH" ]; then
           echo "Found built app at: $APP_PATH"
+          
+          # 1. Package standard IPA with Widgets
           mkdir -p build/Payload
           cp -r "$APP_PATH" build/Payload/
           echo "Applying ad-hoc code signature for sideloading/TrollStore/AltStore..."
           if [ -d "build/Payload/iosApp.app/PlugIns" ]; then
             find "build/Payload/iosApp.app/PlugIns" -name "*.appex" -exec codesign --force --sign - {} \; 2>/dev/null || true
           fi
-          codesign --force --deep --sign - "build/Payload/iosApp.app"
+          codesign --force --sign - "build/Payload/iosApp.app"
           cd build
           zip -r -y Sirinium.ipa Payload
           cd ..
+          rm -rf build/Payload
+
+          # 2. Package standalone IPA without PlugIns (fallback for sideloaders that choke on appex)
+          mkdir -p build/Payload
+          cp -r "$APP_PATH" build/Payload/
+          rm -rf "build/Payload/iosApp.app/PlugIns"
+          codesign --force --sign - "build/Payload/iosApp.app"
+          cd build
+          zip -r -y Sirinium-NoWidgets.ipa Payload
+          cd ..
+          rm -rf build/Payload
         else
           echo "Error: iosApp.app not found in build/DerivedData!"
           exit 1
@@ -66,5 +79,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Sirinium-iOS-IPA
-        path: build/Sirinium.ipa
+        path: |
+          build/Sirinium.ipa
+          build/Sirinium-NoWidgets.ipa
         if-no-files-found: error
