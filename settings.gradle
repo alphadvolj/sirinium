@@ -22,5 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Sirinium"
+rootProject.name = "sirinium-dev"
 include ':app'
+include ':shared'

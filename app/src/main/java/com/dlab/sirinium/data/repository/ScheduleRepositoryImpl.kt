@@ -8,8 +8,8 @@ import com.dlab.sirinium.data.local.dao.LessonNoteDao
 import com.dlab.sirinium.data.local.dao.ScheduleDao
 import com.dlab.sirinium.data.remote.api.SiriusScheduleApi
 import com.dlab.sirinium.data.remote.dto.ScheduleItemDto
-import com.dlab.sirinium.data.remote.dto.toDomain
-import com.dlab.sirinium.data.remote.dto.toEntity
+import com.dlab.sirinium.data.local.entity.toDomain
+import com.dlab.sirinium.data.local.entity.toEntity
 import com.dlab.sirinium.domain.model.Lesson
 import com.dlab.sirinium.domain.model.ScheduleFilter
 import com.dlab.sirinium.domain.repository.ScheduleRepository
@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import java.time.LocalTime
 import java.util.concurrent.ConcurrentHashMap
 
@@ -371,8 +370,8 @@ class ScheduleRepositoryImpl(
     }
 
     override suspend fun getUpcomingLessons(target: String, limit: Int): List<Lesson> {
-        val now = LocalDate.now().format(DateTimeUtils.DATE_FORMATTER)
-        val timeNow = LocalTime.now().format(DateTimeUtils.TIME_FORMATTER)
+        val now = DateTimeUtils.todayFormatted()
+        val timeNow = LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
         val entities = scheduleDao.getUpcomingLessons(target, now, timeNow, limit)
         return entities.map { it.toDomain() }
     }

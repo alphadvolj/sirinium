@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.dlab.sirinium.data.local.SiriniumDatabase
-import com.dlab.sirinium.data.remote.dto.toDomain
+import com.dlab.sirinium.data.local.entity.toDomain
 import com.dlab.sirinium.sync.ScheduleSyncWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

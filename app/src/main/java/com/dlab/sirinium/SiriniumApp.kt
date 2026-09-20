@@ -2,6 +2,7 @@ package com.dlab.sirinium
 
 import android.app.Application
 import com.dlab.sirinium.di.appModule
+import com.dlab.sirinium.di.sharedModule
 import com.dlab.sirinium.notification.ScheduleNotificationManager
 import com.dlab.sirinium.sync.SyncScheduler
 import com.dlab.sirinium.widget.WidgetRefreshWorker
@@ -15,11 +16,14 @@ class SiriniumApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Initialize Platform Context for KMP
+        com.dlab.sirinium.platform.AndroidPlatformContextHolder.appContext = applicationContext
+
         // 1. Initialize Dependency Injection with Koin
         startKoin {
             androidLogger(Level.ERROR)
             androidContext(this@SiriniumApp)
-            modules(appModule)
+            modules(sharedModule, appModule)
         }
 
         // 2. Initialize Notification Channels

@@ -37,7 +37,7 @@ import com.dlab.sirinium.MainActivity
 import com.dlab.sirinium.core.model.LessonType
 import com.dlab.sirinium.core.util.DateTimeUtils
 import com.dlab.sirinium.data.local.SiriniumDatabase
-import com.dlab.sirinium.data.remote.dto.toDomain
+import com.dlab.sirinium.data.local.entity.toDomain
 import com.dlab.sirinium.domain.model.Lesson
 import com.dlab.sirinium.domain.repository.ScheduleRepository
 import com.dlab.sirinium.sync.ScheduleSyncWorker

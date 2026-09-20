@@ -1,0 +1,55 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build Kotlin Multiplatform Framework for iOS Simulator
+      run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-daemon
+
+    - name: Build iOS App with Xcode
+      run: |
+        xcodebuild -project iosApp/iosApp.xcodeproj \
+                   -scheme iosApp \
+                   -configuration Debug \
+                   -sdk iphonesimulator \
+                   -destination 'generic/platform=iOS Simulator' \
+                   CODE_SIGNING_ALLOWED=NO \
+                   CODE_SIGNING_REQUIRED=NO \
+                   clean build
+
+    - name: Compress iOS App Bundle
+      run: |
+        APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "iosApp.app" -type d | head -n 1)
+        if [ -n "$APP_PATH" ]; then
+          echo "Found built app at: $APP_PATH"
+          zip -r iosApp-Simulator.zip "$APP_PATH"
+        fi
+
+    - name: Upload iOS App Artifact
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: iosApp-Simulator
+        path: iosApp-Simulator.zip
+        if-no-files-found: ignore

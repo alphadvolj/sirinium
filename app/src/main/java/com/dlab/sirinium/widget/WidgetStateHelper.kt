@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import android.util.Log
 import com.dlab.sirinium.core.util.DateTimeUtils
 import com.dlab.sirinium.data.local.SiriniumDatabase
-import com.dlab.sirinium.data.remote.dto.toDomain
+import com.dlab.sirinium.data.local.entity.toDomain
 import com.dlab.sirinium.domain.model.Lesson
 import com.dlab.sirinium.domain.repository.ScheduleRepository
 import com.dlab.sirinium.sync.ScheduleSyncWorker
@@ -19,10 +19,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transform
-import java.time.LocalDate
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 data class CompactWidgetState(
     val target: String,
@@ -99,7 +96,7 @@ object WidgetStateHelper {
                             }
                         }
 
-                        val todayDate = LocalDate.now()
+                        val todayDate = DateTimeUtils.today()
                         val timeNow = LocalTime.now()
 
                         val parsedEntities = entities.mapNotNull { entity ->
@@ -108,12 +105,12 @@ object WidgetStateHelper {
                             val startT = try { LocalTime.parse(entity.startTime) } catch (_: Exception) { null }
                             Triple(entity, d, endT ?: startT ?: LocalTime.MAX)
                         }.sortedWith(
-                            compareBy<Triple<com.dlab.sirinium.data.local.entity.ScheduleEntity, LocalDate, LocalTime>> { it.second }
-                                .thenBy { it.third }
+                            compareBy({ it.second.toEpochDays() }, { it.third })
                         )
 
                         val nextEntity = parsedEntities.firstOrNull { (_, date, endTime) ->
-                            date.isAfter(todayDate) || (date.isEqual(todayDate) && !endTime.isBefore(timeNow))
+                            val daysDiff = date.toEpochDays() - todayDate.toEpochDays()
+                            daysDiff > 0 || (daysDiff == 0 && !endTime.isBefore(timeNow))
                         }?.first
 
                         emit(
@@ -146,8 +143,8 @@ object WidgetStateHelper {
                             }
                         }
 
-                        val today = LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.getDefault()))
-                        val formattedDate = LocalDate.now().format(DateTimeFormatter.ofPattern("d MMMM, EEEE", Locale("ru")))
+                        val today = DateTimeUtils.todayFormatted()
+                        val formattedDate = DateTimeUtils.formatReadableDate(today)
                         val todayLessons = entities.filter { it.date == today }
                             .sortedBy { it.startTime }
                             .map { it.toDomain() }

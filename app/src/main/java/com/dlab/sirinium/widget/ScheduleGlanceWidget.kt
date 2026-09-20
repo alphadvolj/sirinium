@@ -38,8 +38,6 @@ import androidx.glance.appwidget.SizeMode
 import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 
 /**
  * Material 3 Expressive Compact / Hero Glance Widget
@@ -180,9 +178,9 @@ class ScheduleGlanceWidget : GlanceAppWidget(), KoinComponent {
         )
         val isOngoing = status is DateTimeUtils.LessonTimeStatus.Ongoing
         val parsedLessonDate = DateTimeUtils.parseDate(lesson.date)
-        val today = LocalDate.now()
+        val today = DateTimeUtils.today()
         val daysUntilLesson = if (parsedLessonDate != null) {
-            java.time.temporal.ChronoUnit.DAYS.between(today, parsedLessonDate)
+            (parsedLessonDate.toEpochDays() - today.toEpochDays()).toLong()
         } else 0L
 
         val isFutureDay = daysUntilLesson > 0L

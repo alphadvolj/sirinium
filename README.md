@@ -88,8 +88,8 @@ app/src/main/java/com/dlab/sirinium/
 
 ```bash
 # Клонирование репозитория
-git clone https://github.com/alphadvolj/sirinium.git
-cd sirinium
+git clone https://github.com/alphadvolj/sirinium-dev.git
+cd sirinium-dev
 
 # Сборка Debug APK
 ./gradlew assembleDebug

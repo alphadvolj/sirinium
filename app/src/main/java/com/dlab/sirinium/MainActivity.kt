@@ -163,6 +163,25 @@ class MainActivity : ComponentActivity() {
                     onDispose {}
                 }
 
+                var showFeedbackSheet by remember { mutableStateOf(false) }
+
+                // Shake detector for Feedback
+                val context = LocalView.current.context
+                DisposableEffect(settingsState.shakeToReportEnabled) {
+                    if (!settingsState.shakeToReportEnabled) {
+                        return@DisposableEffect onDispose {}
+                    }
+                    val sensorManager = context.getSystemService(android.content.Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+                    val accelerometer = sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
+                    val detector = com.dlab.sirinium.core.util.ShakeDetector(context) {
+                        showFeedbackSheet = true
+                    }
+                    sensorManager?.registerListener(detector, accelerometer, android.hardware.SensorManager.SENSOR_DELAY_UI)
+                    onDispose {
+                        sensorManager?.unregisterListener(detector)
+                    }
+                }
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -472,14 +491,36 @@ class MainActivity : ComponentActivity() {
                                     popUpTo(NavRoutes.MAIN) { inclusive = true }
                                 }
                             },
+                            onOpenFeedback = {
+                                showFeedbackSheet = true
+                            },
                             onOpenTutorial = {
                                 showTutorialOnMain = true
                             },
                             onRequestNotificationPermission = {
                                 requestNotificationPermission()
+                            },
+                            tutorialOverlay = { currentTab, onTabSelected, boundsMap, onDismiss ->
+                                com.dlab.sirinium.ui.components.RealAppTutorialOverlay(
+                                    selectedTab = currentTab,
+                                    onTabSelected = onTabSelected,
+                                    scheduleViewModel = scheduleViewModel,
+                                    compareViewModel = compareViewModel,
+                                    freeClassroomsViewModel = freeClassroomsViewModel,
+                                    onOpenFeedback = { showFeedbackSheet = true },
+                                    onDismiss = onDismiss,
+                                    tutorialBoundsMap = boundsMap,
+                                    shakeToReportEnabled = settingsState.shakeToReportEnabled
+                                )
                             }
                         )
                     }
+                }
+
+                if (showFeedbackSheet) {
+                    com.dlab.sirinium.ui.components.FeedbackBottomSheet(
+                        onDismiss = { showFeedbackSheet = false }
+                    )
                 }
             }
         }

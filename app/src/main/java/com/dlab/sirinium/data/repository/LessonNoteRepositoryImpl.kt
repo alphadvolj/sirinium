@@ -1,8 +1,8 @@
 package com.dlab.sirinium.data.repository
 
 import com.dlab.sirinium.data.local.dao.LessonNoteDao
-import com.dlab.sirinium.data.remote.dto.toDomain
-import com.dlab.sirinium.data.remote.dto.toEntity
+import com.dlab.sirinium.data.local.entity.toDomain
+import com.dlab.sirinium.data.local.entity.toEntity
 import com.dlab.sirinium.domain.model.HomeworkTask
 import com.dlab.sirinium.domain.model.Lesson
 import com.dlab.sirinium.domain.model.LessonNote
