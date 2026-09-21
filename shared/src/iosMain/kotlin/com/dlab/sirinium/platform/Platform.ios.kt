@@ -284,6 +284,7 @@ private data class IosWidgetLessonPayload(
     val endTime: String,
     val classroom: String,
     val teacher: String,
+    val group: String = "",
     val rawLessonType: String,
     val numberPair: Int,
     val date: String
@@ -323,6 +324,7 @@ class IosWidgetUpdater(
                             endTime = it.endTime,
                             classroom = it.classroom,
                             teacher = it.teacher,
+                            group = it.group,
                             rawLessonType = it.rawLessonType.ifBlank { it.lessonType.title },
                             numberPair = it.numberPair,
                             date = it.date

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -115,8 +116,9 @@ fun TargetStep(
     }
 
     val filteredList = remember(itemsList, searchQuery) {
-        if (searchQuery.isBlank()) itemsList
+        val list = if (searchQuery.isBlank()) itemsList
         else itemsList.filter { it.contains(searchQuery.trim(), ignoreCase = true) }
+        list.map { it.trim() }.filter { it.isNotBlank() }.distinct()
     }
 
     var shakeSelection by remember { mutableStateOf(false) }
@@ -484,7 +486,7 @@ fun TargetStep(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    items(filteredList, key = { "${currentCategory.sectionType}_$it" }) { item ->
+                    itemsIndexed(filteredList, key = { index, item -> "${currentCategory.sectionType}_${item}_$index" }) { _, item ->
                         val isCurrentSelected = !state.isCustomTarget &&
                                 item.equals(state.selectedTarget, ignoreCase = true) &&
                                 currentCategory.sectionType == state.selectedSectionType

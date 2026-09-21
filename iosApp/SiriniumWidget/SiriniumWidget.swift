@@ -16,9 +16,52 @@ struct WidgetLesson: Codable, Identifiable {
     let endTime: String
     let classroom: String
     let teacher: String
+    let group: String?
     let rawLessonType: String
     let numberPair: Int
     let date: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, discipline, startTime, endTime, classroom, teacher, group, rawLessonType, numberPair, date
+    }
+
+    init(
+        id: String,
+        discipline: String,
+        startTime: String,
+        endTime: String,
+        classroom: String,
+        teacher: String,
+        group: String? = nil,
+        rawLessonType: String,
+        numberPair: Int,
+        date: String
+    ) {
+        self.id = id
+        self.discipline = discipline
+        self.startTime = startTime
+        self.endTime = endTime
+        self.classroom = classroom
+        self.teacher = teacher
+        self.group = group
+        self.rawLessonType = rawLessonType
+        self.numberPair = numberPair
+        self.date = date
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        discipline = try container.decode(String.self, forKey: .discipline)
+        startTime = try container.decode(String.self, forKey: .startTime)
+        endTime = try container.decode(String.self, forKey: .endTime)
+        classroom = try container.decode(String.self, forKey: .classroom)
+        teacher = try container.decode(String.self, forKey: .teacher)
+        group = try container.decodeIfPresent(String.self, forKey: .group) ?? ""
+        rawLessonType = try container.decode(String.self, forKey: .rawLessonType)
+        numberPair = try container.decode(Int.self, forKey: .numberPair)
+        date = try container.decode(String.self, forKey: .date)
+    }
 }
 
 enum LessonState {
@@ -31,6 +74,7 @@ struct ScheduleWidgetEntry: TimelineEntry {
     let date: Date
     let displayTarget: String
     let targetIconName: String
+    let sectionType: String
     let currentLesson: WidgetLesson?
     let nextLesson: WidgetLesson?
     let upcomingLessons: [WidgetLesson]
@@ -123,6 +167,89 @@ func lessonColor(for rawType: String, discipline: String = "") -> Color {
     return Color.blue
 }
 
+func formatTeacherInitials(_ raw: String) -> String {
+    let clean = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    if clean.isEmpty { return "" }
+
+    let normalized = clean.replacingOccurrences(of: "\u{00a0}", with: " ")
+    let components = normalized.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+    guard !components.isEmpty else { return "" }
+
+    let lastName = components[0]
+    if components.count == 1 {
+        return lastName
+    }
+
+    var initials: [String] = []
+    for part in components.dropFirst() {
+        let subParts = part.components(separatedBy: ".").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        for sub in subParts {
+            if let firstLetter = sub.first {
+                initials.append("\(firstLetter).")
+            }
+        }
+    }
+
+    if initials.isEmpty {
+        return lastName
+    }
+    return "\(lastName) " + initials.joined(separator: " ")
+}
+
+struct LessonBadgeInfo: Identifiable {
+    let id = UUID()
+    let icon: String
+    let text: String
+}
+
+func getLessonBadges(lesson: WidgetLesson, sectionType: String) -> [LessonBadgeInfo] {
+    let cleanTeacher = formatTeacherInitials(lesson.teacher)
+    let cleanClassroom = formatLocation(lesson.classroom)
+    let cleanGroup = (lesson.group ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+    var badges: [LessonBadgeInfo] = []
+
+    switch sectionType.lowercased() {
+    case "teacher":
+        // Если выбран преподаватель: показывай группу и аудиторию
+        if !cleanGroup.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "person.2.fill", text: cleanGroup))
+        }
+        if !cleanClassroom.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "location.fill", text: cleanClassroom))
+        }
+        if badges.isEmpty && !cleanTeacher.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "person.fill", text: cleanTeacher))
+        }
+
+    case "classroom", "auditorium":
+        // Если выбрана аудитория: показывай Фамилию и инициалы преподавателя и группу
+        if !cleanTeacher.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "person.fill", text: cleanTeacher))
+        }
+        if !cleanGroup.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "person.2.fill", text: cleanGroup))
+        }
+        if badges.isEmpty && !cleanClassroom.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "location.fill", text: cleanClassroom))
+        }
+
+    default:
+        // По умолчанию (если выбрана группа): показывай Фамилию и инициалы преподавателя и аудиторию
+        if !cleanTeacher.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "person.fill", text: cleanTeacher))
+        }
+        if !cleanClassroom.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "location.fill", text: cleanClassroom))
+        }
+        if badges.isEmpty && !cleanGroup.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "person.2.fill", text: cleanGroup))
+        }
+    }
+
+    return badges
+}
+
 // MARK: - Timeline Provider
 struct SiriniumTimelineProvider: TimelineProvider {
     typealias Entry = ScheduleWidgetEntry
@@ -135,6 +262,7 @@ struct SiriniumTimelineProvider: TimelineProvider {
             date: Date(),
             displayTarget: "К1609-241",
             targetIconName: "person.2.fill",
+            sectionType: "group",
             currentLesson: WidgetLesson(
                 id: "1",
                 discipline: "Высшая математика",
@@ -142,6 +270,7 @@ struct SiriniumTimelineProvider: TimelineProvider {
                 endTime: "10:20",
                 classroom: "302",
                 teacher: "Иванов И.И.",
+                group: "К1609-241",
                 rawLessonType: "Лекция",
                 numberPair: 1,
                 date: todayStr
@@ -153,6 +282,7 @@ struct SiriniumTimelineProvider: TimelineProvider {
                 endTime: "12:10",
                 classroom: "415",
                 teacher: "Петров П.П.",
+                group: "К1609-241",
                 rawLessonType: "Практика",
                 numberPair: 2,
                 date: todayStr
@@ -341,6 +471,7 @@ struct SiriniumTimelineProvider: TimelineProvider {
             date: date,
             displayTarget: displayTarget,
             targetIconName: iconName,
+            sectionType: section,
             currentLesson: ongoing,
             nextLesson: nextLesson,
             upcomingLessons: subsequentLessons,
@@ -450,6 +581,13 @@ private struct SmallWidgetView: View {
 
                 Spacer()
 
+                if let lesson = activeLesson, lesson.numberPair > 0 {
+                    Text("\(lesson.numberPair) пара")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
                 if entry.state == .ongoing {
                     Circle()
                         .fill(Color.green)
@@ -495,33 +633,22 @@ private struct SmallWidgetView: View {
 
                 Spacer(minLength: 4)
 
-                // Bottom Metadata: Room & Pair Number / Type
-                HStack(spacing: 6) {
-                    let loc = formatLocation(lesson.classroom)
-                    if !loc.isEmpty {
+                // Bottom Metadata: Entity Badges (Teacher, Room, Group)
+                let badges = getLessonBadges(lesson: lesson, sectionType: entry.sectionType)
+                HStack(spacing: 4) {
+                    ForEach(badges) { badge in
                         HStack(spacing: 2) {
-                            Image(systemName: "location.fill")
+                            Image(systemName: badge.icon)
                                 .font(.system(size: 7))
-                            Text(loc)
+                            Text(badge.text)
                                 .font(.caption2.weight(.semibold))
+                                .lineLimit(1)
                         }
                         .foregroundStyle(.primary)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(Color(uiColor: .tertiarySystemFill))
                         .clipShape(Capsule())
-                    }
-
-                    if lesson.numberPair > 0 {
-                        Text("\(lesson.numberPair) пара")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    } else if !lesson.rawLessonType.isEmpty {
-                        Text(lesson.rawLessonType)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
                     }
                 }
             } else {
@@ -629,17 +756,18 @@ private struct MediumWidgetView: View {
 
                     Spacer(minLength: 4)
 
-                    HStack(spacing: 6) {
-                        let loc = formatLocation(lesson.classroom)
-                        if !loc.isEmpty {
+                    let badges = getLessonBadges(lesson: lesson, sectionType: entry.sectionType)
+                    HStack(spacing: 4) {
+                        ForEach(badges) { badge in
                             HStack(spacing: 2) {
-                                Image(systemName: "location.fill")
+                                Image(systemName: badge.icon)
                                     .font(.system(size: 7))
-                                Text(loc)
+                                Text(badge.text)
                                     .font(.caption2.weight(.semibold))
+                                    .lineLimit(1)
                             }
                             .foregroundStyle(.primary)
-                            .padding(.horizontal, 6)
+                            .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(Color(uiColor: .tertiarySystemFill))
                             .clipShape(Capsule())
@@ -704,9 +832,9 @@ private struct MediumWidgetView: View {
 
                                     Spacer()
 
-                                    let loc = formatLocation(item.classroom)
-                                    if !loc.isEmpty {
-                                        Text(loc)
+                                    let itemBadges = getLessonBadges(lesson: item, sectionType: entry.sectionType)
+                                    if !itemBadges.isEmpty {
+                                        Text(itemBadges.map { $0.text }.joined(separator: " • "))
                                             .font(.caption2.weight(.medium))
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)

@@ -64,6 +64,7 @@ release/
 # Temporary local screenshots
 ColorOS*.jpg
 log.jpg
+photo_*.jpg
 
 # Temporary local fonts source folder
 static/

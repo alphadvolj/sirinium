@@ -38,7 +38,7 @@ fun ScheduleItemDto.toDomain(
     val d = date.orEmpty()
     val st = startTime.orEmpty()
     val disc = discipline.orEmpty()
-    val room = classroom.orEmpty()
+    val room = classroom.orEmpty().ifBlank { if (stype == "classroom") t else "" }
     val np = numberPair ?: deducePairNumber(startTime)
     val teach = teacher.orEmpty().ifBlank { if (stype == "teacher") t else "" }
     val grp = group.orEmpty().ifBlank { if (stype == "group") t else "" }

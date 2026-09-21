@@ -66,11 +66,11 @@ class MultiplatformScheduleRepository(
     init {
         try {
             val groupsStr = settings.getString("cached_groups", "")
-            if (groupsStr.isNotBlank()) cachedGroups = groupsStr.split("\n").filter { it.isNotBlank() }
+            if (groupsStr.isNotBlank()) cachedGroups = groupsStr.split("\n").map { it.trim() }.filter { it.isNotBlank() }.distinct()
             val teachersStr = settings.getString("cached_teachers", "")
-            if (teachersStr.isNotBlank()) cachedTeachers = teachersStr.split("\n").filter { it.isNotBlank() }
+            if (teachersStr.isNotBlank()) cachedTeachers = teachersStr.split("\n").map { it.trim() }.filter { it.isNotBlank() }.distinct()
             val roomsStr = settings.getString("cached_classrooms", "")
-            if (roomsStr.isNotBlank()) cachedClassrooms = roomsStr.split("\n").filter { it.isNotBlank() }
+            if (roomsStr.isNotBlank()) cachedClassrooms = roomsStr.split("\n").map { it.trim() }.filter { it.isNotBlank() }.distinct()
         } catch (_: Exception) {}
     }
 
@@ -247,7 +247,7 @@ class MultiplatformScheduleRepository(
 
     override suspend fun getGroups(query: String?): Resource<List<String>> {
         return try {
-            val groups = api.getGroups(query)
+            val groups = api.getGroups(query).map { it.trim() }.filter { it.isNotBlank() }.distinct()
             if (groups.isNotEmpty() && query.isNullOrBlank()) {
                 cachedGroups = groups
                 settings.putString("cached_groups", groups.joinToString("\n"))
@@ -256,7 +256,7 @@ class MultiplatformScheduleRepository(
         } catch (e: Exception) {
             if (cachedGroups.isNotEmpty()) {
                 val filtered = if (query.isNullOrBlank()) cachedGroups else cachedGroups.filter { it.contains(query, ignoreCase = true) }
-                Resource.Success(filtered)
+                Resource.Success(filtered.distinct())
             } else {
                 Resource.Error(e.message ?: "Не удалось получить список групп", e)
             }
@@ -265,7 +265,7 @@ class MultiplatformScheduleRepository(
 
     override suspend fun getTeachers(query: String?): Resource<List<String>> {
         return try {
-            val teachers = api.getTeachers(query).map { it.displayName }
+            val teachers = api.getTeachers(query).map { it.displayName.trim() }.filter { it.isNotBlank() }.distinct()
             if (teachers.isNotEmpty() && query.isNullOrBlank()) {
                 cachedTeachers = teachers
                 settings.putString("cached_teachers", teachers.joinToString("\n"))
@@ -274,7 +274,7 @@ class MultiplatformScheduleRepository(
         } catch (e: Exception) {
             if (cachedTeachers.isNotEmpty()) {
                 val filtered = if (query.isNullOrBlank()) cachedTeachers else cachedTeachers.filter { it.contains(query, ignoreCase = true) }
-                Resource.Success(filtered)
+                Resource.Success(filtered.distinct())
             } else {
                 Resource.Error(e.message ?: "Не удалось получить список преподавателей", e)
             }
@@ -283,7 +283,7 @@ class MultiplatformScheduleRepository(
 
     override suspend fun getClassrooms(query: String?): Resource<List<String>> {
         return try {
-            val rooms = api.getClassrooms(query)
+            val rooms = api.getClassrooms(query).map { it.trim() }.filter { it.isNotBlank() }.distinct()
             if (rooms.isNotEmpty() && query.isNullOrBlank()) {
                 cachedClassrooms = rooms
                 settings.putString("cached_classrooms", rooms.joinToString("\n"))
@@ -292,7 +292,7 @@ class MultiplatformScheduleRepository(
         } catch (e: Exception) {
             if (cachedClassrooms.isNotEmpty()) {
                 val filtered = if (query.isNullOrBlank()) cachedClassrooms else cachedClassrooms.filter { it.contains(query, ignoreCase = true) }
-                Resource.Success(filtered)
+                Resource.Success(filtered.distinct())
             } else {
                 Resource.Error(e.message ?: "Не удалось получить список аудиторий", e)
             }

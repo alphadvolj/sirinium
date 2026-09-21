@@ -277,8 +277,9 @@ class ScheduleViewModel(
                 checkAndAutoLoadWeek(intent.date)
             }
             is ScheduleUiIntent.ChangeTarget -> {
-                autoLoadJobs.values.forEach { it.cancel() }
+                val jobsToCancel = autoLoadJobs.values.toList()
                 autoLoadJobs.clear()
+                jobsToCancel.forEach { it.cancel() }
                 _uiState.update { it.copy(loadingWeekOffsets = emptySet()) }
 
                 alarmScheduler.cancelAllAlarms()

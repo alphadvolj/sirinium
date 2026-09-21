@@ -128,11 +128,12 @@ fun TargetSelectorBottomSheet(
     }
 
     val filteredList = remember(itemsList, searchQuery) {
-        if (searchQuery.isBlank()) {
+        val list = if (searchQuery.isBlank()) {
             itemsList
         } else {
             itemsList.filter { it.contains(searchQuery.trim(), ignoreCase = true) }
         }
+        list.map { it.trim() }.filter { it.isNotBlank() }.distinct()
     }
 
     ModalBottomSheet(
@@ -310,7 +311,7 @@ private fun FavoritesListView(
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(favoriteTargets, key = { it.toSerializedString() }) { fav ->
+                itemsIndexed(favoriteTargets, key = { index, fav -> "${fav.toSerializedString()}_$index" }) { _, fav ->
                     val isCurrent = fav.target.equals(currentTarget, ignoreCase = true) &&
                             fav.sectionType == currentSectionType
 
@@ -752,7 +753,7 @@ private fun SearchAndAddView(
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(filteredList, key = { "${currentCategory.sectionType}_$it" }) { item ->
+                itemsIndexed(filteredList, key = { index, item -> "${currentCategory.sectionType}_${item}_$index" }) { _, item ->
                     val isFavorite = favoriteTargets.any {
                         it.target.equals(item, ignoreCase = true) && it.sectionType == currentCategory.sectionType
                     }
