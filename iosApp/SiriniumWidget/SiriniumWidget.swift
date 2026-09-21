@@ -78,6 +78,51 @@ func relativeDayText(_ dateStr: String, relativeTo: Date = Date()) -> String {
     }
 }
 
+// MARK: - Lesson Styling & Formatting Helpers
+func formatLocation(_ raw: String) -> String {
+    var clean = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    if clean.isEmpty { return "" }
+    clean = clean.replacingOccurrences(of: "\"\"", with: "\"")
+    return clean
+}
+
+func lessonColor(for rawType: String, discipline: String = "") -> Color {
+    let text = (rawType + " " + discipline).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+    // 1. Зачет, Зачет дифференцированный, Экзамен -> Красный
+    if text.contains("зачет") || text.contains("зачёт") || text.contains("экзамен") || text.contains("экз") || text.contains("дифф") || text.contains("аттестац") {
+        return Color.red
+    }
+
+    // 2. Лекции -> Зеленый
+    if text.contains("лекц") || text.contains("лек") {
+        return Color.green
+    }
+
+    // 3. Семинарские занятия -> Желтый
+    if text.contains("семин") || text.contains("сем") {
+        return Color.yellow
+    }
+
+    // 4. Консультация -> Фиолетовый
+    if text.contains("консульт") || text.contains("конс") {
+        return Color.purple
+    }
+
+    // 5. Внеучебное мероприятие -> Оранжевый
+    if text.contains("внеучеб") || text.contains("меропр") || text.contains("куратор") || text.contains("событ") {
+        return Color.orange
+    }
+
+    // 6. Практические занятия -> Синий
+    if text.contains("практ") || text.contains("прак") || text.contains("лаб") {
+        return Color.blue
+    }
+
+    // По умолчанию -> Синий
+    return Color.blue
+}
+
 // MARK: - Timeline Provider
 struct SiriniumTimelineProvider: TimelineProvider {
     typealias Entry = ScheduleWidgetEntry
@@ -410,9 +455,10 @@ private struct SmallWidgetView: View {
                         .fill(Color.green)
                         .frame(width: 7, height: 7)
                 } else if entry.state == .upcoming {
+                    let arrowColor = activeLesson.map { lessonColor(for: $0.rawLessonType, discipline: $0.discipline) } ?? Color.blue
                     Image(systemName: "arrow.right")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(Color.blue)
+                        .foregroundStyle(arrowColor)
                 }
             }
             .padding(.bottom, 6)
@@ -420,6 +466,8 @@ private struct SmallWidgetView: View {
             if let lesson = activeLesson {
                 // Status / Relative Day + Time Range
                 let dayLabel = relativeDayText(lesson.date, relativeTo: entry.date)
+                let typeColor = lessonColor(for: lesson.rawLessonType, discipline: lesson.discipline)
+
                 HStack(spacing: 4) {
                     if entry.state == .ongoing {
                         Text("СЕЙЧАС")
@@ -428,12 +476,12 @@ private struct SmallWidgetView: View {
                     } else if dayLabel != "Сегодня" {
                         Text(dayLabel.uppercased())
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(Color.blue)
+                            .foregroundStyle(typeColor)
                     }
 
                     Text("\(lesson.startTime) – \(lesson.endTime)")
-                        .font(.caption.monospacedDigit().weight(.medium))
-                        .foregroundStyle(.secondary)
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(typeColor)
                 }
                 .lineLimit(1)
                 .padding(.bottom, 3)
@@ -449,11 +497,12 @@ private struct SmallWidgetView: View {
 
                 // Bottom Metadata: Room & Pair Number / Type
                 HStack(spacing: 6) {
-                    if !lesson.classroom.isEmpty {
+                    let loc = formatLocation(lesson.classroom)
+                    if !loc.isEmpty {
                         HStack(spacing: 2) {
                             Image(systemName: "location.fill")
                                 .font(.system(size: 7))
-                            Text(lesson.classroom)
+                            Text(loc)
                                 .font(.caption2.weight(.semibold))
                         }
                         .foregroundStyle(.primary)
@@ -542,15 +591,18 @@ private struct MediumWidgetView: View {
                             .fill(Color.green)
                             .frame(width: 7, height: 7)
                     } else if entry.state == .upcoming {
+                        let arrowColor = activeLesson.map { lessonColor(for: $0.rawLessonType, discipline: $0.discipline) } ?? Color.blue
                         Image(systemName: "arrow.right")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(Color.blue)
+                            .foregroundStyle(arrowColor)
                     }
                 }
                 .padding(.bottom, 6)
 
                 if let lesson = activeLesson {
                     let dayLabel = relativeDayText(lesson.date, relativeTo: entry.date)
+                    let typeColor = lessonColor(for: lesson.rawLessonType, discipline: lesson.discipline)
+
                     HStack(spacing: 4) {
                         if entry.state == .ongoing {
                             Text("СЕЙЧАС")
@@ -559,12 +611,12 @@ private struct MediumWidgetView: View {
                         } else if dayLabel != "Сегодня" {
                             Text(dayLabel.uppercased())
                                 .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(Color.blue)
+                                .foregroundStyle(typeColor)
                         }
 
                         Text("\(lesson.startTime) – \(lesson.endTime)")
-                            .font(.caption.monospacedDigit().weight(.medium))
-                            .foregroundStyle(.secondary)
+                            .font(.caption.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(typeColor)
                     }
                     .lineLimit(1)
                     .padding(.bottom, 3)
@@ -578,11 +630,12 @@ private struct MediumWidgetView: View {
                     Spacer(minLength: 4)
 
                     HStack(spacing: 6) {
-                        if !lesson.classroom.isEmpty {
+                        let loc = formatLocation(lesson.classroom)
+                        if !loc.isEmpty {
                             HStack(spacing: 2) {
                                 Image(systemName: "location.fill")
                                     .font(.system(size: 7))
-                                Text("Ауд. \(lesson.classroom)")
+                                Text(loc)
                                     .font(.caption2.weight(.semibold))
                             }
                             .foregroundStyle(.primary)
@@ -635,25 +688,28 @@ private struct MediumWidgetView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(list) { item in
+                            let itemColor = lessonColor(for: item.rawLessonType, discipline: item.discipline)
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(alignment: .center) {
                                     Text(item.startTime)
                                         .font(.caption.monospacedDigit().weight(.semibold))
-                                        .foregroundStyle(Color.blue)
+                                        .foregroundStyle(itemColor)
 
                                     let itemDay = relativeDayText(item.date, relativeTo: entry.date)
                                     if itemDay != dayHeader && itemDay != "Сегодня" {
-                                        Text(itemDay)
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
+                                        Text(itemDay.uppercased())
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(itemColor)
                                     }
 
                                     Spacer()
 
-                                    if !item.classroom.isEmpty {
-                                        Text(item.classroom)
+                                    let loc = formatLocation(item.classroom)
+                                    if !loc.isEmpty {
+                                        Text(loc)
                                             .font(.caption2.weight(.medium))
                                             .foregroundStyle(.secondary)
+                                            .lineLimit(1)
                                     }
                                 }
 
