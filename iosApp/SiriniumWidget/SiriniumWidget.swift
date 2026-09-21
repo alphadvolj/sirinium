@@ -500,34 +500,57 @@ private struct MediumWidgetView: View {
     }
 }
 
-// MARK: - Widget Configuration
-struct SiriniumScheduleWidget: Widget {
+// MARK: - Widget Configurations
+@available(iOSApplicationExtension 17.0, *)
+struct SiriniumScheduleWidget17: Widget {
     let kind: String = "SiriniumScheduleWidget"
 
     var body: some WidgetConfiguration {
-        if #available(iOS 17.0, *) {
-            StaticConfiguration(kind: kind, provider: SiriniumTimelineProvider()) { entry in
-                SiriniumScheduleWidgetEntryView(entry: entry)
-            }
-            .configurationDisplayName("Расписание занятий")
-            .description("Текущая и ближайшие пары для вашей группы, преподавателя или аудитории.")
-            .supportedFamilies([.systemSmall, .systemMedium])
-            .contentMarginsDisabled()
-        } else {
-            StaticConfiguration(kind: kind, provider: SiriniumTimelineProvider()) { entry in
-                SiriniumScheduleWidgetEntryView(entry: entry)
-            }
-            .configurationDisplayName("Расписание занятий")
-            .description("Текущая и ближайшие пары для вашей группы, преподавателя или аудитории.")
-            .supportedFamilies([.systemSmall, .systemMedium])
+        StaticConfiguration(kind: kind, provider: SiriniumTimelineProvider()) { entry in
+            SiriniumScheduleWidgetEntryView(entry: entry)
         }
+        .configurationDisplayName("Расписание занятий")
+        .description("Текущая и ближайшие пары для вашей группы, преподавателя или аудитории.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
-// MARK: - Bundle
-@main
-struct SiriniumWidgetBundle: WidgetBundle {
+struct SiriniumScheduleWidget16: Widget {
+    let kind: String = "SiriniumScheduleWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: SiriniumTimelineProvider()) { entry in
+            SiriniumScheduleWidgetEntryView(entry: entry)
+        }
+        .configurationDisplayName("Расписание занятий")
+        .description("Текущая и ближайшие пары для вашей группы, преподавателя или аудитории.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+// MARK: - Bundles
+@available(iOSApplicationExtension 17.0, *)
+struct SiriniumWidgetBundle17: WidgetBundle {
     var body: some Widget {
-        SiriniumScheduleWidget()
+        SiriniumScheduleWidget17()
+    }
+}
+
+struct SiriniumWidgetBundle16: WidgetBundle {
+    var body: some Widget {
+        SiriniumScheduleWidget16()
+    }
+}
+
+// MARK: - Entry Point
+@main
+struct SiriniumWidgetLauncher {
+    static func main() {
+        if #available(iOSApplicationExtension 17.0, *) {
+            SiriniumWidgetBundle17.main()
+        } else {
+            SiriniumWidgetBundle16.main()
+        }
     }
 }
