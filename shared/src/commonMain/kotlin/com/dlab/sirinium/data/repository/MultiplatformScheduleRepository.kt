@@ -301,8 +301,14 @@ class MultiplatformScheduleRepository(
 
     override suspend fun getUpcomingLessons(target: String, limit: Int): List<Lesson> {
         val all = getTargetScheduleFlow(target).value
-        val today = DateTimeUtils.todayFormatted()
-        return all.filter { it.date >= today }.sortedWith(compareBy({ it.date }, { it.startTime })).take(limit)
+        val today = DateTimeUtils.today()
+        val todayEpoch = today.toEpochDays()
+        return all.mapNotNull { lesson ->
+            val parsed = DateTimeUtils.parseDate(lesson.date) ?: return@mapNotNull null
+            if (parsed.toEpochDays() >= todayEpoch) {
+                Triple(parsed, lesson.startTime, lesson)
+            } else null
+        }.sortedWith(compareBy({ it.first.toEpochDays() }, { it.second })).map { it.third }.take(limit)
     }
 
     override suspend fun getLessonsForGroup(groupName: String): List<Lesson> {

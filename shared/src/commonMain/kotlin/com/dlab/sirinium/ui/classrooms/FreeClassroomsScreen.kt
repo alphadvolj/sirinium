@@ -114,7 +114,7 @@ fun FreeClassroomsScreen(
                         Text(
                             text = "Свободные аудитории",
                             fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = "Поиск свободных кабинетов по парам",
@@ -178,7 +178,7 @@ fun FreeClassroomsScreen(
                         Text(
                             text = DateTimeUtils.formatReadableDate(state.selectedDate).replaceFirstChar { it.uppercase() },
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -239,7 +239,7 @@ fun FreeClassroomsScreen(
                             Text(
                                 text = "#${pairInfo.pairNumber} пара",
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = if (isSelected) MaterialTheme.colorScheme.onPrimary
                                 else MaterialTheme.colorScheme.onSurface
                             )

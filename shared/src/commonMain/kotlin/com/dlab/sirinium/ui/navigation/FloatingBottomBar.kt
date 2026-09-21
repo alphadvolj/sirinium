@@ -237,7 +237,7 @@ fun FloatingBottomBar(
                                     Text(
                                         text = tab.title,
                                         fontSize = tabFontSize,
-                                        fontWeight = FontWeight.Bold,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = contentColor,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis

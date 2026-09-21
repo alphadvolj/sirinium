@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.dlab.sirinium.platform.PlatformSettings
 import com.dlab.sirinium.ui.components.FeedbackBottomSheet
+import com.dlab.sirinium.ui.components.RealAppTutorialOverlay
 import com.dlab.sirinium.ui.classrooms.FreeClassroomsViewModel
 import com.dlab.sirinium.ui.compare.CompareViewModel
 import com.dlab.sirinium.ui.onboarding.OnboardingFlow
@@ -82,6 +83,7 @@ fun SiriniumAppContent(
     val activeDynamicColor = if (!isOnboardingCompleted) onboardingState.dynamicColor else settingsState.dynamicColor
 
     var showInternalFeedbackSheet by remember { mutableStateOf(false) }
+    var showTutorialOnMain by remember { mutableStateOf(false) }
 
     LaunchedEffect(openFeedbackTrigger) {
         if (openFeedbackTrigger > 0) {
@@ -138,6 +140,7 @@ fun SiriniumAppContent(
                             settingsViewModel.reloadFromPreferences()
                             compareViewModel.refreshFavorites()
                         }
+                        showTutorialOnMain = true
                     },
                     modifier = modifier
                 )
@@ -148,12 +151,28 @@ fun SiriniumAppContent(
                     freeClassroomsViewModel = freeClassroomsViewModel,
                     settingsViewModel = settingsViewModel,
                     appUpdateViewModel = appUpdateViewModel,
+                    showTutorial = showTutorialOnMain,
+                    onDismissTutorial = { showTutorialOnMain = false },
+                    onOpenTutorial = { showTutorialOnMain = true },
                     onRestartOnboarding = {
                         onboardingViewModel.resetOnboarding()
                         onRestartOnboarding()
                     },
                     onOpenFeedback = effectiveOpenFeedback,
                     onRequestNotificationPermission = onRequestNotificationPermission,
+                    tutorialOverlay = { currentTab, onTabSelected, boundsMap, onDismiss ->
+                        RealAppTutorialOverlay(
+                            selectedTab = currentTab,
+                            onTabSelected = onTabSelected,
+                            scheduleViewModel = scheduleViewModel,
+                            compareViewModel = compareViewModel,
+                            freeClassroomsViewModel = freeClassroomsViewModel,
+                            onOpenFeedback = effectiveOpenFeedback,
+                            onDismiss = onDismiss,
+                            tutorialBoundsMap = boundsMap,
+                            shakeToReportEnabled = settingsState.shakeToReportEnabled
+                        )
+                    },
                     modifier = modifier
                 )
             }

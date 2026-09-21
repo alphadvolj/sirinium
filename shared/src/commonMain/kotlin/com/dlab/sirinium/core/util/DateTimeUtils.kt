@@ -116,12 +116,33 @@ object DateTimeUtils {
 
     fun parseDate(dateStr: String?): LocalDate? {
         if (dateStr.isNullOrBlank()) return null
-        val parts = dateStr.trim().split(".")
-        if (parts.size != 3) return null
-        val d = parts[0].toIntOrNull() ?: return null
-        val m = parts[1].toIntOrNull() ?: return null
-        val y = parts[2].toIntOrNull() ?: return null
-        return try { LocalDate(y, m, d) } catch (_: Exception) { null }
+        val trimmed = dateStr.trim()
+        if (trimmed.contains(".")) {
+            val parts = trimmed.split(".")
+            if (parts.size == 3) {
+                val d = parts[0].toIntOrNull() ?: return null
+                val m = parts[1].toIntOrNull() ?: return null
+                val y = parts[2].toIntOrNull() ?: return null
+                return try { LocalDate(y, m, d) } catch (_: Exception) { null }
+            }
+        }
+        if (trimmed.contains("-")) {
+            val parts = trimmed.split("-")
+            if (parts.size == 3) {
+                if (parts[0].length == 4) {
+                    val y = parts[0].toIntOrNull() ?: return null
+                    val m = parts[1].toIntOrNull() ?: return null
+                    val d = parts[2].toIntOrNull() ?: return null
+                    return try { LocalDate(y, m, d) } catch (_: Exception) { null }
+                } else {
+                    val d = parts[0].toIntOrNull() ?: return null
+                    val m = parts[1].toIntOrNull() ?: return null
+                    val y = parts[2].toIntOrNull() ?: return null
+                    return try { LocalDate(y, m, d) } catch (_: Exception) { null }
+                }
+            }
+        }
+        return null
     }
 
     fun parseTime(timeStr: String?): LocalTime? {

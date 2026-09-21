@@ -40,7 +40,7 @@ val sharedModule = module {
     single<PlatformIconManager> { NoOpIconManager() }
     single<PlatformSyncScheduler> { NoOpSyncScheduler() }
     single<SiriusScheduleApi> { KtorSiriusScheduleApi(get()) }
-    single<LessonNoteRepository> { MultiplatformLessonNoteRepository() }
+    single<LessonNoteRepository> { MultiplatformLessonNoteRepository(get()) }
     single<ScheduleRepository> {
         MultiplatformScheduleRepository(
             api = get(),

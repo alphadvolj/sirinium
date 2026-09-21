@@ -13,6 +13,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -170,7 +172,7 @@ fun CurrentLessonHeroCard(
                         Text(
                             text = if (isOngoing) "ИДЕТ СЕЙЧАС" else "СЛЕДУЮЩАЯ ПАРА",
                             fontSize = (11f * s).sp,
-                            fontWeight = FontWeight.ExtraBold,
+                            fontWeight = FontWeight.SemiBold,
                             letterSpacing = 0.5.sp,
                             maxLines = 1,
                             color = if (isOngoing) typeAccent else MaterialTheme.colorScheme.onSurface
@@ -206,7 +208,7 @@ fun CurrentLessonHeroCard(
                         Text(
                             text = countdownText,
                             fontSize = (12f * s).sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             color = if (isOngoing) typeAccent else MaterialTheme.colorScheme.onSurface
                         )
@@ -218,9 +220,9 @@ fun CurrentLessonHeroCard(
                 // Lesson Title
                 Text(
                     text = lesson.discipline,
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 26.sp,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 25.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -228,11 +230,12 @@ fun CurrentLessonHeroCard(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Metadata Chips
-                Row(
+                // Metadata Chips with auto-wrap
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
@@ -243,7 +246,7 @@ fun CurrentLessonHeroCard(
                         Text(
                             text = lesson.rawLessonType.ifBlank { lessonType.title },
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -268,7 +271,9 @@ fun CurrentLessonHeroCard(
                                     text = lesson.group,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -292,7 +297,9 @@ fun CurrentLessonHeroCard(
                                     text = lesson.classroom,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -308,17 +315,23 @@ fun CurrentLessonHeroCard(
                             Text(
                                 text = "!",
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.ExtraBold,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
                     } else {
-                        Text(
-                            text = "#${lesson.numberPair} пара",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.outline
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                text = "#${lesson.numberPair} пара",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
 

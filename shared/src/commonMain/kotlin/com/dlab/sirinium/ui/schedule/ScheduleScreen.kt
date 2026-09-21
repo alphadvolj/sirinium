@@ -191,7 +191,7 @@ fun ScheduleScreen(
                         Text(
                             text = state.filter.target.ifBlank { "Выберите расписание" },
                             fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis

@@ -91,23 +91,60 @@ class ScheduleViewModel(
     private fun observeLessonMarkers() {
         combine(
             lessonNoteRepository.getAllNotes(),
-            lessonNoteRepository.getAllTasks()
-        ) { notes, tasks ->
+            lessonNoteRepository.getAllTasks(),
+            _uiState.map { it.allLessons }.distinctUntilChanged()
+        ) { notes, tasks, allLessons ->
             val markersMap = mutableMapOf<String, LessonMarkerInfo>()
 
             val notesByLesson = notes.filter { it.lessonId.isNotBlank() }.groupBy { it.lessonId }
             val tasksByLesson = tasks.filter { it.lessonId.isNotBlank() }.groupBy { it.lessonId }
 
+            val studentNotesByDiscipline = notes
+                .filter { it.scope == "student" && it.discipline.isNotBlank() }
+                .groupBy { it.discipline.trim().lowercase() }
+
+            val teacherNotesByDisciplineAndGroup = notes
+                .filter { it.scope == "teacher" && it.discipline.isNotBlank() }
+                .groupBy { "${it.discipline.trim().lowercase()}___${it.groupName.trim().lowercase()}" }
+
+            for (lesson in allLessons) {
+                val directNotes = notesByLesson[lesson.id].orEmpty()
+                val syncedNotes = when (lesson.sectionType) {
+                    "classroom" -> emptyList()
+                    "teacher" -> {
+                        val key = "${lesson.discipline.trim().lowercase()}___${lesson.group.trim().lowercase()}"
+                        teacherNotesByDisciplineAndGroup[key].orEmpty()
+                    }
+                    else -> {
+                        studentNotesByDiscipline[lesson.discipline.trim().lowercase()].orEmpty()
+                    }
+                }
+
+                val combinedNotes = (directNotes + syncedNotes).distinctBy { it.id }
+                val lessonTasks = tasksByLesson[lesson.id].orEmpty()
+                val completedTasks = lessonTasks.count { it.isDone }
+
+                if (combinedNotes.isNotEmpty() || lessonTasks.isNotEmpty()) {
+                    markersMap[lesson.id] = LessonMarkerInfo(
+                        notesCount = combinedNotes.size,
+                        totalTasksCount = lessonTasks.size,
+                        completedTasksCount = completedTasks
+                    )
+                }
+            }
+
             val allLessonIds = (notesByLesson.keys + tasksByLesson.keys)
             for (lessonId in allLessonIds) {
-                val lessonNotes = notesByLesson[lessonId].orEmpty()
-                val lessonTasks = tasksByLesson[lessonId].orEmpty()
-                val completedTasks = lessonTasks.count { it.isDone }
-                markersMap[lessonId] = LessonMarkerInfo(
-                    notesCount = lessonNotes.size,
-                    totalTasksCount = lessonTasks.size,
-                    completedTasksCount = completedTasks
-                )
+                if (!markersMap.containsKey(lessonId)) {
+                    val lessonNotes = notesByLesson[lessonId].orEmpty()
+                    val lessonTasks = tasksByLesson[lessonId].orEmpty()
+                    val completedTasks = lessonTasks.count { it.isDone }
+                    markersMap[lessonId] = LessonMarkerInfo(
+                        notesCount = lessonNotes.size,
+                        totalTasksCount = lessonTasks.size,
+                        completedTasksCount = completedTasks
+                    )
+                }
             }
             markersMap
         }

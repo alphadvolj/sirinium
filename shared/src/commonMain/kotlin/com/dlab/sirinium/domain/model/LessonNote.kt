@@ -1,7 +1,9 @@
 package com.dlab.sirinium.domain.model
 
 import kotlinx.datetime.Clock
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class LessonNote(
     val id: Long = 0,
     val lessonId: String = "",
@@ -22,6 +24,7 @@ data class LessonNote(
     val tasks: List<HomeworkTask> = emptyList()
 )
 
+@Serializable
 data class HomeworkTask(
     val id: Long = 0,
     val lessonId: String,

@@ -1,10 +1,5 @@
 package com.dlab.sirinium.ui.components
 
-import android.content.Context
-import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -89,7 +84,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -146,7 +140,6 @@ fun RealAppTutorialOverlay(
     tutorialBoundsMap: Map<TutorialTargetKey, Rect> = emptyMap(),
     shakeToReportEnabled: Boolean = true
 ) {
-    val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
 
@@ -278,15 +271,6 @@ fun RealAppTutorialOverlay(
     fun triggerHapticFeedback() {
         try {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-                vm?.defaultVibrator?.vibrate(VibrationEffect.createOneShot(70, VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                @Suppress("DEPRECATION")
-                val v = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                @Suppress("DEPRECATION")
-                v?.vibrate(70)
-            }
         } catch (_: Exception) {}
     }
 

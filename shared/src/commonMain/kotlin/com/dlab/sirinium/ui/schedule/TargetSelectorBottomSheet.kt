@@ -542,22 +542,21 @@ private fun SearchAndAddView(
                         .clip(RoundedCornerShape(11.dp))
                         .background(bgColor)
                         .clickable { onCategorySelected(index) }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 7.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = category.icon,
                         contentDescription = null,
-                        modifier = Modifier.size(12.dp),
+                        modifier = Modifier.size(13.dp),
                         tint = textColor
                     )
-                    Spacer(modifier = Modifier.width(3.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = category.title,
-                        fontSize = 10.sp,
-                        letterSpacing = (-0.35).sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 11.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         color = textColor,
                         maxLines = 1,
                         softWrap = false
