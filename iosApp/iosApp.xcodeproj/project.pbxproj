@@ -13,11 +13,6 @@
 		A10000000000000000000024 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* Assets.xcassets */; };
 		A10000000000000000000025 /* SiriniumWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000018 /* SiriniumWidget.swift */; };
 		A10000000000000000000026 /* SiriniumWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* SiriniumWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		A10000000000000000000061 /* GoogleSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000051 /* GoogleSans-Regular.ttf */; };
-		A10000000000000000000062 /* GoogleSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000052 /* GoogleSans-Medium.ttf */; };
-		A10000000000000000000063 /* GoogleSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000053 /* GoogleSans-SemiBold.ttf */; };
-		A10000000000000000000064 /* GoogleSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000054 /* GoogleSans-Bold.ttf */; };
-		A10000000000000000000065 /* GoogleSans-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000055 /* GoogleSans-Italic.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,11 +25,6 @@
 		A10000000000000000000017 /* SiriniumWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SiriniumWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000018 /* SiriniumWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriniumWidget.swift; sourceTree = "<group>"; };
 		A10000000000000000000019 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A10000000000000000000051 /* GoogleSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/GoogleSans-Regular.ttf"; sourceTree = "<group>"; };
-		A10000000000000000000052 /* GoogleSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/GoogleSans-Medium.ttf"; sourceTree = "<group>"; };
-		A10000000000000000000053 /* GoogleSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/GoogleSans-SemiBold.ttf"; sourceTree = "<group>"; };
-		A10000000000000000000054 /* GoogleSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/GoogleSans-Bold.ttf"; sourceTree = "<group>"; };
-		A10000000000000000000055 /* GoogleSans-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fonts/GoogleSans-Italic.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,11 +63,6 @@
 				A10000000000000000000012 /* ContentView.swift */,
 				A10000000000000000000013 /* Info.plist */,
 				A10000000000000000000016 /* Assets.xcassets */,
-				A10000000000000000000051 /* GoogleSans-Regular.ttf */,
-				A10000000000000000000052 /* GoogleSans-Medium.ttf */,
-				A10000000000000000000053 /* GoogleSans-SemiBold.ttf */,
-				A10000000000000000000054 /* GoogleSans-Bold.ttf */,
-				A10000000000000000000055 /* GoogleSans-Italic.ttf */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -223,11 +208,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000024 /* Assets.xcassets in Resources */,
-				A10000000000000000000061 /* GoogleSans-Regular.ttf in Resources */,
-				A10000000000000000000062 /* GoogleSans-Medium.ttf in Resources */,
-				A10000000000000000000063 /* GoogleSans-SemiBold.ttf in Resources */,
-				A10000000000000000000064 /* GoogleSans-Bold.ttf in Resources */,
-				A10000000000000000000065 /* GoogleSans-Italic.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
