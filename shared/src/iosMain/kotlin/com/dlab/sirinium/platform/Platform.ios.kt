@@ -10,10 +10,20 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import platform.Foundation.NSNotificationCenter
-import platform.Foundation.NSUserDefaults
+import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
+import platform.Foundation.NSUUID
+import platform.Foundation.NSUserDefaults
+import platform.Foundation.writeToFile
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
+import platform.UIKit.UIImage
+import platform.UIKit.UIImageJPEGRepresentation
+import platform.UIKit.UIImagePickerController
+import platform.UIKit.UIImagePickerControllerDelegateProtocol
+import platform.UIKit.UIImagePickerControllerOriginalImage
+import platform.UIKit.UIImagePickerControllerSourceType
+import platform.UIKit.UINavigationControllerDelegateProtocol
 import platform.UIKit.UIPasteboard
 import platform.UserNotifications.UNAuthorizationOptionAlert
 import platform.UserNotifications.UNAuthorizationOptionBadge
@@ -23,6 +33,7 @@ import platform.UserNotifications.UNNotificationRequest
 import platform.UserNotifications.UNNotificationSound
 import platform.UserNotifications.UNTimeIntervalNotificationTrigger
 import platform.UserNotifications.UNUserNotificationCenter
+import platform.darwin.NSObject
 
 class IosPlatformSettings : PlatformSettings {
     private val userDefaults = NSUserDefaults.standardUserDefaults
@@ -68,18 +79,6 @@ class IosPlatformSettings : PlatformSettings {
         userDefaults.setObject(value.joinToString("\n"), forKey = key)
     }
 }
-
-import platform.Foundation.NSTemporaryDirectory
-import platform.Foundation.NSUUID
-import platform.Foundation.writeToFile
-import platform.UIKit.UIImage
-import platform.UIKit.UIImageJPEGRepresentation
-import platform.UIKit.UIImagePickerController
-import platform.UIKit.UIImagePickerControllerDelegateProtocol
-import platform.UIKit.UIImagePickerControllerOriginalImage
-import platform.UIKit.UIImagePickerControllerSourceType
-import platform.UIKit.UINavigationControllerDelegateProtocol
-import platform.darwin.NSObject
 
 class IosPlatformActions : PlatformActions {
     private var activePickerDelegate: NSObject? = null
