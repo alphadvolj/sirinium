@@ -1,5 +1,6 @@
 package com.dlab.sirinium.ui.components
 
+import com.dlab.sirinium.core.util.AppLogger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -92,6 +93,20 @@ fun FeedbackBottomSheet(
             appendLine()
             appendLine("=== ОПИСАНИЕ ===")
             appendLine(description.trim())
+
+            val lastCrash = AppLogger.getLastCrashLog()
+            if (!lastCrash.isNullOrBlank()) {
+                appendLine()
+                appendLine("=== ПОСЛЕДНИЙ СБОЙ ПРИЛОЖЕНИЯ ===")
+                appendLine(lastCrash)
+            }
+
+            val recentLogs = AppLogger.getRecentLogs()
+            if (recentLogs.isNotBlank()) {
+                appendLine()
+                appendLine("=== СИСТЕМНЫЕ ЛОГИ (ПОСЛЕДНИЕ СОБЫТИЯ) ===")
+                appendLine(recentLogs)
+            }
         }
     }
 
@@ -112,7 +127,11 @@ fun FeedbackBottomSheet(
             val encodedSubject = subject.replace(" ", "%20")
             val encodedBody = reportBody.replace("\n", "%0A").replace(" ", "%20")
             val mailUrl = "mailto:dmitry@avh-vless.work?subject=$encodedSubject&body=$encodedBody"
-            platformActions.openUrl(mailUrl)
+            if (mailUrl.length < 1800) {
+                platformActions.openUrl(mailUrl)
+            } else {
+                platformActions.shareFeedback(subject, reportBody, emptyList())
+            }
         }
         platformActions.showToast("Открываем окно отправки...")
         onDismiss()

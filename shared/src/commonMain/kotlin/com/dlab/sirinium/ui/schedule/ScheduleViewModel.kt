@@ -3,6 +3,7 @@ package com.dlab.sirinium.ui.schedule
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dlab.sirinium.core.model.Resource
+import com.dlab.sirinium.core.util.AppLogger
 import com.dlab.sirinium.core.util.DateTimeUtils
 import com.dlab.sirinium.domain.model.FavoriteTarget
 import com.dlab.sirinium.domain.model.HomeworkTask
@@ -233,7 +234,6 @@ class ScheduleViewModel(
             } catch (_: Exception) {
             } finally {
                 _uiState.update { it.copy(loadingWeekOffsets = it.loadingWeekOffsets - weekOffset) }
-                autoLoadJobs.remove(weekOffset)
             }
         }
         autoLoadJobs[weekOffset] = job
@@ -277,6 +277,7 @@ class ScheduleViewModel(
                 checkAndAutoLoadWeek(intent.date)
             }
             is ScheduleUiIntent.ChangeTarget -> {
+                AppLogger.i("ScheduleViewModel", "Switching target to ${intent.target} (${intent.sectionType})")
                 val jobsToCancel = autoLoadJobs.values.toList()
                 autoLoadJobs.clear()
                 jobsToCancel.forEach { it.cancel() }

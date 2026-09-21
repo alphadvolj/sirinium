@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,12 +31,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.ComposeUIViewController
+import com.dlab.sirinium.core.util.AppLogger
 import com.dlab.sirinium.di.initKoin
 import com.dlab.sirinium.ui.SiriniumAppContent
 import org.koin.compose.KoinContext
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
+import platform.Foundation.NSURL
 import platform.Foundation.NSUserDefaults
+import platform.UIKit.UIActivityViewController
+import platform.UIKit.UIApplication
+import platform.UIKit.UIDevice
+import platform.UIKit.UIPasteboard
 import platform.UIKit.UIViewController
 import kotlin.experimental.ExperimentalNativeApi
 
@@ -49,6 +56,7 @@ fun startKoin() {
             val message = throwable.message ?: "Unknown error"
             val stack = throwable.stackTraceToString()
             println("[Sirinium iOS Crash] Unhandled exception: $message\n$stack")
+            AppLogger.recordCrash("[Crash] $message\n$stack")
             try {
                 NSUserDefaults.standardUserDefaults.setObject(
                     "[Crash] $message\n$stack",
@@ -62,6 +70,7 @@ fun startKoin() {
             koinInitialized = true
         } catch (e: Throwable) {
             println("[Sirinium iOS initKoin Error]: ${e.message}")
+            AppLogger.recordCrash("[initKoin Error] ${e.message}\n${e.stackTraceToString()}")
             try {
                 NSUserDefaults.standardUserDefaults.setObject(
                     "[initKoin Error] ${e.message}\n${e.stackTraceToString()}",
@@ -78,6 +87,8 @@ private fun IosCrashFallback(
     errorMessage: String,
     onDismiss: () -> Unit
 ) {
+    var isCopied by remember { mutableStateOf(false) }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color(0xFF0F172A)
@@ -118,9 +129,79 @@ private fun IosCrashFallback(
                 )
             }
             Spacer(modifier = Modifier.height(20.dp))
+
+            // 1. Send Report via Mail / Share
+            Button(
+                onClick = {
+                    val subject = "[Sirinium iOS Crash Report]"
+                    val body = buildString {
+                        appendLine("=== SIRINIUM iOS CRASH REPORT ===")
+                        appendLine("Версия приложения: 3.0.1")
+                        try {
+                            val device = UIDevice.currentDevice
+                            appendLine("Устройство: ${device.model} (${device.systemName} ${device.systemVersion})")
+                        } catch (_: Throwable) {}
+                        appendLine()
+                        appendLine("=== ТЕКСТ ОШИБКИ И СТЕК ===")
+                        appendLine(errorMessage)
+                        appendLine()
+                        val recent = AppLogger.getRecentLogs()
+                        if (recent.isNotBlank()) {
+                            appendLine("=== ПОСЛЕДНИЕ СОБЫТИЯ И ЛОГИ ===")
+                            appendLine(recent)
+                        }
+                    }
+                    val encodedSubject = subject.replace(" ", "%20")
+                    val encodedBody = body.replace("\n", "%0A").replace(" ", "%20")
+                    val mailUrl = "mailto:dmitry@avh-vless.work?subject=$encodedSubject&body=$encodedBody"
+                    val nsUrl = NSURL.URLWithString(mailUrl)
+                    if (nsUrl != null && UIApplication.sharedApplication.canOpenURL(nsUrl)) {
+                        UIApplication.sharedApplication.openURL(nsUrl)
+                    } else {
+                        val rootVc = UIApplication.sharedApplication.keyWindow?.rootViewController
+                        if (rootVc != null) {
+                            val activityVc = UIActivityViewController(
+                                activityItems = listOf("$subject\n\n$body"),
+                                applicationActivities = null
+                            )
+                            rootVc.presentViewController(activityVc, animated = true, completion = null)
+                        } else {
+                            UIPasteboard.generalPasteboard.string = "$subject\n\n$body"
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
+            ) {
+                Text("Отправить отчет на почту", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 2. Copy Log
+            OutlinedButton(
+                onClick = {
+                    UIPasteboard.generalPasteboard.string = errorMessage
+                    isCopied = true
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = if (isCopied) "Лог скопирован в буфер!" else "Скопировать лог",
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 3. Continue
             Button(
                 onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155))
             ) {
                 Text("Продолжить", color = Color.White)
             }
