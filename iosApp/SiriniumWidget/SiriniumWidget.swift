@@ -29,11 +29,14 @@ enum LessonState {
 
 struct ScheduleWidgetEntry: TimelineEntry {
     let date: Date
-    let target: String
+    let displayTarget: String
+    let targetIconName: String
     let currentLesson: WidgetLesson?
     let nextLesson: WidgetLesson?
     let upcomingLessons: [WidgetLesson]
     let state: LessonState
+
+    var target: String { displayTarget }
 }
 
 // MARK: - Date Formatting Helpers
@@ -85,7 +88,8 @@ struct SiriniumTimelineProvider: TimelineProvider {
         let todayStr = formatter.string(from: Date())
         return ScheduleWidgetEntry(
             date: Date(),
-            target: "К1609-241",
+            displayTarget: "К1609-241",
+            targetIconName: "person.2.fill",
             currentLesson: WidgetLesson(
                 id: "1",
                 discipline: "Высшая математика",
@@ -149,20 +153,116 @@ struct SiriniumTimelineProvider: TimelineProvider {
     }
 
     // MARK: - Helpers
-    private func loadScheduleData() -> WidgetScheduleData? {
-        let sharedDefaults = UserDefaults(suiteName: "group.com.dlab.sirinium")
-        let jsonString = sharedDefaults?.string(forKey: "widget_schedule_data")
-            ?? UserDefaults.standard.string(forKey: "widget_schedule_data")
-
-        guard let jsonString = jsonString, let jsonData = jsonString.data(using: .utf8) else {
-            return nil
+    private func getPossibleSuites() -> [String] {
+        var suites = ["group.com.dlab.sirinium", "group.com.dlab.sirinium.ios"]
+        if let bundleId = Bundle.main.bundleIdentifier {
+            let stripped = bundleId.replacingOccurrences(of: ".widget", with: "")
+                .replacingOccurrences(of: ".SiriniumWidgetExtension", with: "")
+            suites.append("group.\(stripped)")
         }
-        return try? JSONDecoder().decode(WidgetScheduleData.self, from: jsonData)
+        return suites
+    }
+
+    private func loadScheduleData() -> WidgetScheduleData? {
+        let suites = getPossibleSuites()
+        for suite in suites {
+            if let sharedDefaults = UserDefaults(suiteName: suite),
+               let jsonString = sharedDefaults.string(forKey: "widget_schedule_data"),
+               let jsonData = jsonString.data(using: .utf8),
+               let decoded = try? JSONDecoder().decode(WidgetScheduleData.self, from: jsonData) {
+                return decoded
+            }
+            if let containerUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suite) {
+                let fileUrl = containerUrl.appendingPathComponent("widget_schedule_data.json")
+                if let fileData = try? Data(contentsOf: fileUrl),
+                   let decoded = try? JSONDecoder().decode(WidgetScheduleData.self, from: fileData) {
+                    return decoded
+                }
+            }
+        }
+        if let jsonString = UserDefaults.standard.string(forKey: "widget_schedule_data"),
+           let jsonData = jsonString.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode(WidgetScheduleData.self, from: jsonData) {
+            return decoded
+        }
+        return nil
+    }
+
+    private func loadActiveTarget() -> String? {
+        let suites = getPossibleSuites()
+        for suite in suites {
+            if let sharedDefaults = UserDefaults(suiteName: suite) {
+                if let t = sharedDefaults.string(forKey: "widget_active_target"), !t.isEmpty {
+                    return t
+                }
+                if let t = sharedDefaults.string(forKey: "pref_current_target"), !t.isEmpty {
+                    return t
+                }
+            }
+            if let containerUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suite) {
+                let fileUrl = containerUrl.appendingPathComponent("widget_active_target.txt")
+                if let content = try? String(contentsOf: fileUrl, encoding: .utf8) {
+                    let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty { return trimmed }
+                }
+            }
+        }
+        if let t = UserDefaults.standard.string(forKey: "widget_active_target"), !t.isEmpty {
+            return t
+        }
+        return UserDefaults.standard.string(forKey: "pref_current_target")
+    }
+
+    private func loadActiveSection() -> String {
+        let suites = getPossibleSuites()
+        for suite in suites {
+            if let sharedDefaults = UserDefaults(suiteName: suite) {
+                if let s = sharedDefaults.string(forKey: "widget_active_section"), !s.isEmpty {
+                    return s
+                }
+                if let s = sharedDefaults.string(forKey: "pref_current_section"), !s.isEmpty {
+                    return s
+                }
+            }
+            if let containerUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suite) {
+                let fileUrl = containerUrl.appendingPathComponent("widget_active_section.txt")
+                if let content = try? String(contentsOf: fileUrl, encoding: .utf8) {
+                    let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty { return trimmed }
+                }
+            }
+        }
+        return UserDefaults.standard.string(forKey: "widget_active_section")
+            ?? UserDefaults.standard.string(forKey: "pref_current_section")
+            ?? "group"
     }
 
     private func createEntry(for date: Date, data: WidgetScheduleData? = nil) -> ScheduleWidgetEntry {
         let activeData = data ?? loadScheduleData()
-        let target = activeData?.target.isEmpty == false ? activeData!.target : "Sirinium"
+        let rawTarget = (activeData?.target.isEmpty == false ? activeData?.target : nil) ?? loadActiveTarget() ?? ""
+        let section = (activeData?.sectionType.isEmpty == false ? activeData?.sectionType : nil) ?? loadActiveSection()
+
+        // Format entity title and symbol: NEVER "Sirinium"
+        let displayTarget: String
+        let iconName: String
+
+        if rawTarget.isEmpty || rawTarget.caseInsensitiveCompare("Sirinium") == .orderedSame {
+            displayTarget = "Расписание"
+            iconName = "calendar"
+        } else {
+            switch section.lowercased() {
+            case "classroom":
+                displayTarget = rawTarget.lowercased().contains("ауд") ? rawTarget : "Ауд. \(rawTarget)"
+                iconName = "building.2.fill"
+            case "teacher":
+                displayTarget = rawTarget
+                iconName = "person.fill"
+            default: // "group"
+                displayTarget = rawTarget
+                iconName = "person.2.fill"
+            }
+        }
+
         let allLessons = activeData?.lessons ?? []
 
         // Parse and sort all lessons chronologically
@@ -194,7 +294,8 @@ struct SiriniumTimelineProvider: TimelineProvider {
 
         return ScheduleWidgetEntry(
             date: date,
-            target: target,
+            displayTarget: displayTarget,
+            targetIconName: iconName,
             currentLesson: ongoing,
             nextLesson: nextLesson,
             upcomingLessons: subsequentLessons,
@@ -207,13 +308,11 @@ struct SiriniumTimelineProvider: TimelineProvider {
         let cleanTime = timeStr.trimmingCharacters(in: .whitespacesAndNewlines)
         if cleanDate.isEmpty || cleanTime.isEmpty { return nil }
 
-        var normalizedTime = cleanTime
-        if let colonIndex = cleanTime.firstIndex(of: ":") {
-            let hourPart = cleanTime[..<colonIndex]
-            if hourPart.count == 1 {
-                normalizedTime = "0" + cleanTime
-            }
-        }
+        let timeParts = cleanTime.split(separator: ":")
+        guard timeParts.count >= 2 else { return nil }
+        let h = timeParts[0].count == 1 ? "0" + timeParts[0] : String(timeParts[0])
+        let m = timeParts[1].count == 1 ? "0" + timeParts[1] : String(timeParts[1])
+        let normalizedTime = "\(h):\(m)"
 
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ru_RU")
@@ -223,9 +322,9 @@ struct SiriniumTimelineProvider: TimelineProvider {
             let parts = cleanDate.split(separator: ".")
             if parts.count == 3 {
                 let d = parts[0].count == 1 ? "0" + parts[0] : String(parts[0])
-                let m = parts[1].count == 1 ? "0" + parts[1] : String(parts[1])
+                let month = parts[1].count == 1 ? "0" + parts[1] : String(parts[1])
                 let y = String(parts[2])
-                let normalizedDate = "\(d).\(m).\(y)"
+                let normalizedDate = "\(d).\(month).\(y)"
                 formatter.dateFormat = "dd.MM.yyyy HH:mm"
                 return formatter.date(from: "\(normalizedDate) \(normalizedTime)")
             }
@@ -234,9 +333,9 @@ struct SiriniumTimelineProvider: TimelineProvider {
             if parts.count == 3 {
                 if parts[0].count == 4 {
                     let y = String(parts[0])
-                    let m = parts[1].count == 1 ? "0" + parts[1] : String(parts[1])
+                    let month = parts[1].count == 1 ? "0" + parts[1] : String(parts[1])
                     let d = parts[2].count == 1 ? "0" + parts[2] : String(parts[2])
-                    let normalizedDate = "\(y)-\(m)-\(d)"
+                    let normalizedDate = "\(y)-\(month)-\(d)"
                     formatter.dateFormat = "yyyy-MM-dd HH:mm"
                     return formatter.date(from: "\(normalizedDate) \(normalizedTime)")
                 }
@@ -293,9 +392,13 @@ private struct SmallWidgetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header: Target & Indicator
-            HStack(alignment: .center) {
-                Text(entry.target)
+            // Header: Entity Icon + Target & Indicator
+            HStack(alignment: .center, spacing: 4) {
+                Image(systemName: entry.targetIconName)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+
+                Text(entry.displayTarget)
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -421,9 +524,13 @@ private struct MediumWidgetView: View {
         HStack(spacing: 12) {
             // Left Column: Active / Next Lesson
             VStack(alignment: .leading, spacing: 0) {
-                // Header: Target & Indicator
-                HStack(alignment: .center) {
-                    Text(entry.target)
+                // Header: Entity Icon + Target & Indicator
+                HStack(alignment: .center, spacing: 4) {
+                    Image(systemName: entry.targetIconName)
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+
+                    Text(entry.displayTarget)
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

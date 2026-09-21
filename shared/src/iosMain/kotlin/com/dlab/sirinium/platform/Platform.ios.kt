@@ -9,11 +9,16 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import platform.Foundation.NSBundle
+import platform.Foundation.NSFileManager
 import platform.Foundation.NSNotificationCenter
+import platform.Foundation.NSString
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
 import platform.Foundation.NSUUID
+import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.NSUserDefaults
+import platform.Foundation.dataUsingEncoding
 import platform.Foundation.writeToFile
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
@@ -35,6 +40,43 @@ import platform.UserNotifications.UNTimeIntervalNotificationTrigger
 import platform.UserNotifications.UNUserNotificationCenter
 import platform.darwin.NSObject
 
+internal fun getAppGroupSuites(): List<String> {
+    val list = mutableListOf("group.com.dlab.sirinium", "group.com.dlab.sirinium.ios")
+    val bundleId = NSBundle.mainBundle.bundleIdentifier
+    if (!bundleId.isNullOrBlank()) {
+        list.add("group.$bundleId")
+    }
+    return list
+}
+
+internal fun mirrorTargetAndSection(key: String, value: String) {
+    if (value.isBlank()) return
+    val suites = getAppGroupSuites()
+    val altKey = if (key == "pref_current_target") "widget_active_target" else "widget_active_section"
+    val fileName = if (key == "pref_current_target") "widget_active_target.txt" else "widget_active_section.txt"
+
+    for (suite in suites) {
+        val defs = NSUserDefaults(suiteName = suite)
+        defs?.setObject(value, forKey = key)
+        defs?.setObject(value, forKey = altKey)
+        defs?.synchronize()
+
+        try {
+            val containerUrl = NSFileManager.defaultManager.containerURLForSecurityApplicationGroupIdentifier(suite)
+            val fileUrl = containerUrl?.URLByAppendingPathComponent(fileName)
+            val path = fileUrl?.path
+            val data = (value as NSString).dataUsingEncoding(NSUTF8StringEncoding)
+            if (path != null && data != null) {
+                data.writeToFile(path, atomically = true)
+            }
+        } catch (_: Exception) {}
+    }
+    NSUserDefaults.standardUserDefaults.setObject(value, forKey = key)
+    NSUserDefaults.standardUserDefaults.setObject(value, forKey = altKey)
+    NSUserDefaults.standardUserDefaults.synchronize()
+    NSNotificationCenter.defaultCenter.postNotificationName("ReloadWidgetsNotification", null)
+}
+
 class IosPlatformSettings : PlatformSettings {
     private val userDefaults = NSUserDefaults.standardUserDefaults
 
@@ -44,6 +86,10 @@ class IosPlatformSettings : PlatformSettings {
 
     override fun putString(key: String, value: String) {
         userDefaults.setObject(value, forKey = key)
+        userDefaults.synchronize()
+        if (key == "pref_current_target" || key == "pref_current_section") {
+            mirrorTargetAndSection(key, value)
+        }
     }
 
     override fun getBoolean(key: String, defaultValue: Boolean): Boolean {
@@ -258,9 +304,13 @@ class IosWidgetUpdater(
         val section = settings.getString("pref_current_section", "group").ifBlank { "group" }
         if (target.isBlank()) return
 
+        // 1. Immediately mirror active target and section to all suites and containers
+        mirrorTargetAndSection("pref_current_target", target)
+        mirrorTargetAndSection("pref_current_section", section)
+
         scope.launch {
             try {
-                val upcoming = repository.getUpcomingLessons(target, limit = 20)
+                val upcoming = repository.getUpcomingLessons(target, limit = 25)
                 val payload = IosWidgetPayload(
                     target = target,
                     sectionType = section,
@@ -280,18 +330,32 @@ class IosWidgetUpdater(
                     }
                 )
                 val jsonString = jsonFormatter.encodeToString(IosWidgetPayload.serializer(), payload)
+                val jsonData = (jsonString as NSString).dataUsingEncoding(NSUTF8StringEncoding)
 
-                // 1. App Group shared container for WidgetExtension
-                val groupDefaults = NSUserDefaults(suiteName = "group.com.dlab.sirinium")
-                groupDefaults?.setObject(jsonString, forKey = "widget_schedule_data")
-                groupDefaults?.synchronize()
+                val suites = getAppGroupSuites()
+                for (suite in suites) {
+                    val groupDefaults = NSUserDefaults(suiteName = suite)
+                    groupDefaults?.setObject(jsonString, forKey = "widget_schedule_data")
+                    groupDefaults?.setObject(target, forKey = "widget_active_target")
+                    groupDefaults?.setObject(section, forKey = "widget_active_section")
+                    groupDefaults?.synchronize()
 
-                // 2. Standard user defaults container as fallback
+                    try {
+                        val containerUrl = NSFileManager.defaultManager.containerURLForSecurityApplicationGroupIdentifier(suite)
+                        val fileUrl = containerUrl?.URLByAppendingPathComponent("widget_schedule_data.json")
+                        val path = fileUrl?.path
+                        if (path != null && jsonData != null) {
+                            jsonData.writeToFile(path, atomically = true)
+                        }
+                    } catch (_: Exception) {}
+                }
+
                 val standardDefaults = NSUserDefaults.standardUserDefaults
                 standardDefaults.setObject(jsonString, forKey = "widget_schedule_data")
+                standardDefaults.setObject(target, forKey = "widget_active_target")
+                standardDefaults.setObject(section, forKey = "widget_active_section")
                 standardDefaults.synchronize()
 
-                // 3. Post notification for Swift to call WidgetCenter.shared.reloadAllTimelines()
                 NSNotificationCenter.defaultCenter.postNotificationName("ReloadWidgetsNotification", null)
             } catch (e: Exception) {
                 println("[IosWidgetUpdater] Error updating widget: ${e.message}")

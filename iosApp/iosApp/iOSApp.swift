@@ -25,6 +25,20 @@ struct iOSApp: App {
         ) { _ in
             WidgetCenter.shared.reloadAllTimelines()
         }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            WidgetCenter.shared.reloadAllTimelines()
+        }
     }
 
     var body: some Scene {

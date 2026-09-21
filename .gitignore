@@ -46,6 +46,7 @@ google-services.json
 
 # Log files
 *.log
+*.ips
 
 # OS generated files
 .DS_Store

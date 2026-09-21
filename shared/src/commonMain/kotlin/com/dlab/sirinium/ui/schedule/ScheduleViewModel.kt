@@ -75,6 +75,7 @@ class ScheduleViewModel(
         DateTimeUtils.getWeekDatesForOffset(1).firstOrNull()?.let { nextWeekDate ->
             checkAndAutoLoadWeek(nextWeekDate)
         }
+        widgetUpdater.updateWidgets()
     }
 
     private fun observeLastUpdateTime() {
