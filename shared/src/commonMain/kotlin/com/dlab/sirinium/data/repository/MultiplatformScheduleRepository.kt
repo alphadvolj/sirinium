@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -51,6 +53,7 @@ class MultiplatformScheduleRepository(
         coerceInputValues = true
     }
 
+    private val cacheMutex = Mutex()
     private val cachedLessonsMap = mutableMapOf<String, MutableList<Lesson>>()
     private val loadedWeeks = mutableMapOf<String, MutableSet<Int>>()
     private val lastUpdateFlows = mutableMapOf<String, MutableStateFlow<Long>>()
@@ -194,27 +197,38 @@ class MultiplatformScheduleRepository(
                 else -> api.getGroupSchedule(groupName = target, weekOffset = weekOffset)
             }
             val domainLessons = items.map { it.toDomain(fallbackTarget = target, forcedSectionType = sectionType) }
-            val targetLessons = cachedLessonsMap.getOrPut(target) {
-                loadCachedLessonsFromSettings(target).toMutableList()
+            val deduplicated = cacheMutex.withLock {
+                val targetLessons = cachedLessonsMap.getOrPut(target) {
+                    loadCachedLessonsFromSettings(target).toMutableList()
+                }
+
+                // Remove existing lessons for dates present in the fetched week
+                val fetchedDates = domainLessons.map { it.date }.filter { it.isNotBlank() }.toSet()
+                if (fetchedDates.isNotEmpty()) {
+                    targetLessons.removeAll { it.date in fetchedDates }
+                } else {
+                    val weekDates = DateTimeUtils.getWeekDatesForOffset(weekOffset).toSet()
+                    targetLessons.removeAll { it.date in weekDates }
+                }
+                targetLessons.addAll(domainLessons)
+
+                val distinct = targetLessons
+                    .distinctBy { lesson ->
+                        "${lesson.date}_${lesson.startTime}_${lesson.numberPair}_${lesson.discipline.trim().lowercase()}_${lesson.classroom.trim().lowercase()}_${lesson.teacher.trim().lowercase()}"
+                    }
+                    .sortedWith(compareBy({ it.date }, { it.startTime }))
+
+                targetLessons.clear()
+                targetLessons.addAll(distinct)
+                distinct
             }
 
-            // Remove existing lessons for dates present in the fetched week
-            val fetchedDates = domainLessons.map { it.date }.filter { it.isNotBlank() }.toSet()
-            if (fetchedDates.isNotEmpty()) {
-                targetLessons.removeAll { it.target.equals(target, ignoreCase = true) && it.date in fetchedDates }
-            } else {
-                val weekDates = DateTimeUtils.getWeekDatesForOffset(weekOffset).toSet()
-                targetLessons.removeAll { it.target.equals(target, ignoreCase = true) && it.date in weekDates }
-            }
-            targetLessons.addAll(domainLessons)
-
-            val sorted = targetLessons.sortedWith(compareBy({ it.date }, { it.startTime }))
             markWeekLoaded(target, weekOffset)
             setLastUpdateTime(target, Clock.System.now().toEpochMilliseconds())
 
             // Update reactive flow and persistent settings
-            getTargetScheduleFlow(target).value = sorted
-            persistLessons(target, sorted)
+            getTargetScheduleFlow(target).value = deduplicated
+            persistLessons(target, deduplicated)
 
             Resource.Success(Unit)
         } catch (e: Exception) {

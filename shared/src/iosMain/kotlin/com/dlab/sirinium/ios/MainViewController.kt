@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.ComposeUIViewController
 import com.dlab.sirinium.di.initKoin
 import com.dlab.sirinium.ui.SiriniumAppContent
-import com.dlab.sirinium.ui.components.FeedbackBottomSheet
 import org.koin.compose.KoinContext
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
@@ -152,7 +151,7 @@ fun MainViewController(): UIViewController {
                 }
             )
         } else {
-            var showFeedbackSheet by remember { mutableStateOf(false) }
+            var feedbackTrigger by remember { mutableStateOf(0) }
 
             DisposableEffect(Unit) {
                 val observer = NSNotificationCenter.defaultCenter.addObserverForName(
@@ -163,7 +162,7 @@ fun MainViewController(): UIViewController {
                     val isExplicitlyDisabled = NSUserDefaults.standardUserDefaults.objectForKey("pref_shake_to_report") != null &&
                             !NSUserDefaults.standardUserDefaults.boolForKey("pref_shake_to_report")
                     if (!isExplicitlyDisabled) {
-                        showFeedbackSheet = true
+                        feedbackTrigger++
                     }
                 }
                 onDispose {
@@ -173,12 +172,8 @@ fun MainViewController(): UIViewController {
 
             KoinContext {
                 SiriniumAppContent(
-                    onOpenFeedback = { showFeedbackSheet = true }
+                    openFeedbackTrigger = feedbackTrigger
                 )
-
-                if (showFeedbackSheet) {
-                    FeedbackBottomSheet(onDismiss = { showFeedbackSheet = false })
-                }
             }
         }
     }

@@ -40,14 +40,18 @@ data class ScheduleUiState(
      */
     fun lessonsForDate(dateStr: String): List<Lesson> {
         val query = filter.searchQuery.trim()
-        return allLessons.filter { lesson ->
-            val matchesDate = dateStr.isBlank() || lesson.date == dateStr
-            val matchesQuery = query.isBlank() ||
-                    lesson.discipline.contains(query, ignoreCase = true) ||
-                    lesson.teacher.contains(query, ignoreCase = true) ||
-                    lesson.classroom.contains(query, ignoreCase = true)
-            matchesDate && matchesQuery
-        }
+        return allLessons
+            .filter { lesson ->
+                val matchesDate = dateStr.isBlank() || lesson.date == dateStr
+                val matchesQuery = query.isBlank() ||
+                        lesson.discipline.contains(query, ignoreCase = true) ||
+                        lesson.teacher.contains(query, ignoreCase = true) ||
+                        lesson.classroom.contains(query, ignoreCase = true)
+                matchesDate && matchesQuery
+            }
+            .distinctBy { lesson ->
+                "${lesson.date}_${lesson.startTime}_${lesson.numberPair}_${lesson.discipline.trim().lowercase()}_${lesson.classroom.trim().lowercase()}_${lesson.teacher.trim().lowercase()}"
+            }
     }
 }
 

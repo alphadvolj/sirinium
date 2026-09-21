@@ -64,6 +64,49 @@ class AndroidPlatformActions(private val context: Context) : PlatformActions {
         }
     }
 
+    override fun shareFeedback(subject: String, body: String, attachments: List<String>) {
+        try {
+            if (attachments.isEmpty()) {
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, subject)
+                    putExtra(Intent.EXTRA_TEXT, body)
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf("dmitry@avh-vless.work"))
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                val chooser = Intent.createChooser(sendIntent, "Отправить обратную связь").apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(chooser)
+            } else {
+                val uris = ArrayList<Uri>()
+                for (path in attachments) {
+                    val uri = if (path.startsWith("content://") || path.startsWith("file://")) {
+                        Uri.parse(path)
+                    } else {
+                        Uri.fromFile(java.io.File(path))
+                    }
+                    uris.add(uri)
+                }
+                val sendIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                    type = "image/*"
+                    putExtra(Intent.EXTRA_SUBJECT, subject)
+                    putExtra(Intent.EXTRA_TEXT, body)
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf("dmitry@avh-vless.work"))
+                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                val chooser = Intent.createChooser(sendIntent, "Отправить обратную связь").apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(chooser)
+            }
+        } catch (_: Exception) {
+            shareText("$subject\n\n$body")
+        }
+    }
+
     override fun getPlatformName(): String = "Android"
 }
 

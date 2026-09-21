@@ -69,7 +69,21 @@ class IosPlatformSettings : PlatformSettings {
     }
 }
 
+import platform.Foundation.NSTemporaryDirectory
+import platform.Foundation.NSUUID
+import platform.Foundation.writeToFile
+import platform.UIKit.UIImage
+import platform.UIKit.UIImageJPEGRepresentation
+import platform.UIKit.UIImagePickerController
+import platform.UIKit.UIImagePickerControllerDelegateProtocol
+import platform.UIKit.UIImagePickerControllerOriginalImage
+import platform.UIKit.UIImagePickerControllerSourceType
+import platform.UIKit.UINavigationControllerDelegateProtocol
+import platform.darwin.NSObject
+
 class IosPlatformActions : PlatformActions {
+    private var activePickerDelegate: NSObject? = null
+
     override fun openUrl(url: String) {
         val nsUrl = NSURL.URLWithString(url) ?: return
         UIApplication.sharedApplication.openURL(nsUrl)
@@ -90,6 +104,56 @@ class IosPlatformActions : PlatformActions {
         } else {
             copyToClipboard(text)
         }
+    }
+
+    override fun shareFeedback(subject: String, body: String, attachments: List<String>) {
+        val rootVc = UIApplication.sharedApplication.keyWindow?.rootViewController
+        if (rootVc != null) {
+            val items = mutableListOf<Any>(subject + "\n\n" + body)
+            for (path in attachments) {
+                val fileUrl = NSURL.fileURLWithPath(path)
+                items.add(fileUrl)
+            }
+            val activityVc = UIActivityViewController(
+                activityItems = items,
+                applicationActivities = null
+            )
+            rootVc.presentViewController(activityVc, animated = true, completion = null)
+        } else {
+            copyToClipboard("$subject\n\n$body")
+        }
+    }
+
+    override fun pickImages(maxCount: Int, onResult: (List<String>) -> Unit) {
+        val rootVc = UIApplication.sharedApplication.keyWindow?.rootViewController ?: return
+        val delegate = object : NSObject(), UIImagePickerControllerDelegateProtocol, UINavigationControllerDelegateProtocol {
+            override fun imagePickerController(picker: UIImagePickerController, didFinishPickingMediaWithInfo: Map<Any?, *>) {
+                picker.dismissViewControllerAnimated(true, completion = null)
+                val image = didFinishPickingMediaWithInfo[UIImagePickerControllerOriginalImage] as? UIImage
+                if (image != null) {
+                    val data = UIImageJPEGRepresentation(image, 0.8)
+                    if (data != null) {
+                        val path = NSTemporaryDirectory() + "feedback_${NSUUID().UUIDString}.jpg"
+                        data.writeToFile(path, atomically = true)
+                        onResult(listOf(path))
+                        return
+                    }
+                }
+                onResult(emptyList())
+            }
+
+            override fun imagePickerControllerDidCancel(picker: UIImagePickerController) {
+                picker.dismissViewControllerAnimated(true, completion = null)
+                onResult(emptyList())
+            }
+        }
+        activePickerDelegate = delegate
+
+        val picker = UIImagePickerController().apply {
+            sourceType = UIImagePickerControllerSourceType.UIImagePickerControllerSourceTypePhotoLibrary
+            this.delegate = delegate
+        }
+        rootVc.presentViewController(picker, animated = true, completion = null)
     }
 
     override fun showToast(message: String) {

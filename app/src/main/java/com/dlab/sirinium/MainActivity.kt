@@ -197,6 +197,7 @@ class MainActivity : ComponentActivity() {
                         val sectionType = onboardingState.effectiveSectionType
                         scheduleViewModel.onIntent(ScheduleUiIntent.ChangeTarget(target, sectionType))
                         scheduleViewModel.onIntent(ScheduleUiIntent.ReloadFavorites)
+                        scheduleViewModel.onIntent(ScheduleUiIntent.Refresh)
                         compareViewModel.refreshFavorites()
                         settingsViewModel.reloadFromPreferences()
                         showTutorialOnMain = startTutorial

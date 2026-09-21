@@ -126,7 +126,6 @@ fun OnboardingFlow(
                     state = state,
                     onBack = { currentStep = OnboardingStep.SHAKE },
                     onComplete = {
-                        onboardingViewModel.completeOnboarding()
                         currentStep = OnboardingStep.TUTORIAL
                     }
                 )
@@ -136,12 +135,12 @@ fun OnboardingFlow(
                     shakeToReportEnabled = state.shakeToReportEnabled,
                     onBack = { currentStep = OnboardingStep.COMPLETE },
                     onSkip = {
-                        onboardingViewModel.completeOnboarding()
                         onFinish(state.effectiveTarget, state.effectiveSectionType)
+                        onboardingViewModel.completeOnboarding()
                     },
                     onNext = {
-                        onboardingViewModel.completeOnboarding()
                         onFinish(state.effectiveTarget, state.effectiveSectionType)
+                        onboardingViewModel.completeOnboarding()
                     }
                 )
             }

@@ -9,6 +9,12 @@ interface PlatformActions {
     fun shareText(text: String) {
         copyToClipboard(text)
     }
+    fun shareFeedback(subject: String, body: String, attachments: List<String>) {
+        shareText("$subject\n\n$body")
+    }
+    fun pickImages(maxCount: Int, onResult: (List<String>) -> Unit) {
+        onResult(emptyList())
+    }
     fun getPlatformName(): String
 }
 

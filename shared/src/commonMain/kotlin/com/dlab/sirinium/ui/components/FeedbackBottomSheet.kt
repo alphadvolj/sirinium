@@ -15,16 +15,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Email
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,6 +41,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -73,6 +77,7 @@ fun FeedbackBottomSheet(
     var contactEmail by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var descriptionError by remember { mutableStateOf<String?>(null) }
+    var attachedImages by remember { mutableStateOf<List<String>>(emptyList()) }
 
     fun generateReportText(): String {
         return buildString {
@@ -81,13 +86,16 @@ fun FeedbackBottomSheet(
             appendLine("Email: ${contactEmail.ifBlank { "Не указан" }}")
             appendLine("Платформа: ${platformActions.getPlatformName()}")
             appendLine("Версия приложения: 3.0.1")
+            if (attachedImages.isNotEmpty()) {
+                appendLine("Прикреплено файлов: ${attachedImages.size}")
+            }
             appendLine()
             appendLine("=== ОПИСАНИЕ ===")
             appendLine(description.trim())
         }
     }
 
-    fun sendViaEmail() {
+    fun sendReport() {
         val trimmed = description.trim()
         if (trimmed.length < 5) {
             descriptionError = "Пожалуйста, опишите подробнее (минимум 5 символов)"
@@ -96,11 +104,17 @@ fun FeedbackBottomSheet(
         descriptionError = null
 
         val subject = "[Sirinium ${platformActions.getPlatformName()}] ${feedbackType.label}: ${trimmed.take(40)}"
-        val encodedSubject = subject.replace(" ", "%20")
-        val reportBody = generateReportText().replace("\n", "%0A").replace(" ", "%20")
-        val mailUrl = "mailto:dmitry@avh-vless.work?subject=$encodedSubject&body=$reportBody"
-        platformActions.openUrl(mailUrl)
-        platformActions.showToast("Открываем почтовый клиент...")
+        val reportBody = generateReportText()
+
+        if (attachedImages.isNotEmpty()) {
+            platformActions.shareFeedback(subject, reportBody, attachedImages)
+        } else {
+            val encodedSubject = subject.replace(" ", "%20")
+            val encodedBody = reportBody.replace("\n", "%0A").replace(" ", "%20")
+            val mailUrl = "mailto:dmitry@avh-vless.work?subject=$encodedSubject&body=$encodedBody"
+            platformActions.openUrl(mailUrl)
+        }
+        platformActions.showToast("Открываем окно отправки...")
         onDismiss()
     }
 
@@ -252,10 +266,97 @@ fun FeedbackBottomSheet(
                 }
             }
 
+            // Photo attachments section
+            item {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Скриншоты или фото (${attachedImages.size}/3)",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (attachedImages.size < 3) {
+                            TextButton(
+                                onClick = {
+                                    val remaining = 3 - attachedImages.size
+                                    platformActions.pickImages(remaining) { newUris ->
+                                        attachedImages = (attachedImages + newUris).distinct().take(3)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.AddPhotoAlternate,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Добавить", fontSize = 13.sp)
+                            }
+                        }
+                    }
+
+                    if (attachedImages.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(attachedImages.size) { index ->
+                                val uri = attachedImages[index]
+                                val filename = uri.substringAfterLast("/").substringAfterLast("\\").takeLast(20)
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Image,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = filename,
+                                            fontSize = 12.sp,
+                                            maxLines = 1,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        IconButton(
+                                            onClick = {
+                                                attachedImages = attachedImages.filterIndexed { i, _ -> i != index }
+                                            },
+                                            modifier = Modifier.size(20.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Close,
+                                                contentDescription = "Удалить",
+                                                modifier = Modifier.size(14.dp),
+                                                tint = MaterialTheme.colorScheme.outline
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Primary Send Action Button
             item {
                 Button(
-                    onClick = { sendViaEmail() },
+                    onClick = { sendReport() },
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -264,7 +365,7 @@ fun FeedbackBottomSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
-                        .expressiveBounceClick(scaleDown = 0.96f) { sendViaEmail() }
+                        .expressiveBounceClick(scaleDown = 0.96f) { sendReport() }
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Send,
@@ -273,7 +374,7 @@ fun FeedbackBottomSheet(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Отправить по почте",
+                        text = if (attachedImages.isNotEmpty()) "Поделиться отчетом с фото" else "Отправить по почте",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )

@@ -33,12 +33,14 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dlab.sirinium.platform.LocalPlatformActions
 import com.dlab.sirinium.ui.onboarding.OnboardingUiState
 import com.dlab.sirinium.ui.onboarding.components.OnboardingStepLayout
 
@@ -55,12 +57,19 @@ fun ThemeStep(
     onSkip: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val platformActions = LocalPlatformActions.current
+    val isIos = remember { platformActions.getPlatformName().equals("iOS", ignoreCase = true) }
+
     OnboardingStepLayout(
         currentStep = 2,
         totalSteps = 4,
         icon = Icons.Rounded.Palette,
         title = "Внешний вид",
-        description = "Выберите цветовую схему оформления и включите динамические цвета Material You, адаптирующиеся под обои телефона.",
+        description = if (isIos) {
+            "Выберите цветовую схему оформления приложения: системную, светлую или тёмную."
+        } else {
+            "Выберите цветовую схему оформления и включите динамические цвета Material You, адаптирующиеся под обои телефона."
+        },
         onBack = onBack,
         onNext = onNext,
         onSkip = null,
@@ -156,49 +165,51 @@ fun ThemeStep(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        if (!isIos) {
+            Spacer(modifier = Modifier.height(20.dp))
 
-        // 2. Dynamic Color (Material You) Toggle Card
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-            ),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            // 2. Dynamic Color (Material You) Toggle Card
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                ),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Динамические цвета (Material You)",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Адаптирует акцентные оттенки под палитру смартфона",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.outline,
-                        lineHeight = 16.sp
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Динамические цвета (Material You)",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Адаптирует акцентные оттенки под палитру смартфона",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.outline,
+                            lineHeight = 16.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Switch(
+                        checked = state.dynamicColor,
+                        onCheckedChange = onSetDynamicColor,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
+                        )
                     )
                 }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Switch(
-                    checked = state.dynamicColor,
-                    onCheckedChange = onSetDynamicColor,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary
-                    )
-                )
             }
         }
     }

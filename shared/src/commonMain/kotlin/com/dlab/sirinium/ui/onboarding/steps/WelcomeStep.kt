@@ -41,6 +41,7 @@ import com.dlab.sirinium.ui.components.ExpressiveBackgroundShapes
 @Composable
 fun WelcomeStep(
     onNext: () -> Unit,
+    onSkip: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(

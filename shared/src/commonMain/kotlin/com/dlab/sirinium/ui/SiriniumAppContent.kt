@@ -7,12 +7,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.dlab.sirinium.platform.PlatformSettings
 import com.dlab.sirinium.ui.components.FeedbackBottomSheet
 import com.dlab.sirinium.ui.classrooms.FreeClassroomsViewModel
 import com.dlab.sirinium.ui.compare.CompareViewModel
@@ -31,7 +33,8 @@ fun SiriniumAppContent(
     modifier: Modifier = Modifier,
     onRestartOnboarding: () -> Unit = {},
     onOpenFeedback: (() -> Unit)? = null,
-    onRequestNotificationPermission: () -> Unit = {}
+    onRequestNotificationPermission: () -> Unit = {},
+    openFeedbackTrigger: Int = 0
 ) {
     KoinContext {
         val scheduleViewModel: ScheduleViewModel = koinInject()
@@ -51,6 +54,7 @@ fun SiriniumAppContent(
             onRestartOnboarding = onRestartOnboarding,
             onOpenFeedback = onOpenFeedback,
             onRequestNotificationPermission = onRequestNotificationPermission,
+            openFeedbackTrigger = openFeedbackTrigger,
             modifier = modifier
         )
     }
@@ -67,6 +71,7 @@ fun SiriniumAppContent(
     onRestartOnboarding: () -> Unit = {},
     onOpenFeedback: (() -> Unit)? = null,
     onRequestNotificationPermission: () -> Unit = {},
+    openFeedbackTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val settingsState by settingsViewModel.uiState.collectAsState()
@@ -77,6 +82,12 @@ fun SiriniumAppContent(
     val activeDynamicColor = if (!isOnboardingCompleted) onboardingState.dynamicColor else settingsState.dynamicColor
 
     var showInternalFeedbackSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(openFeedbackTrigger) {
+        if (openFeedbackTrigger > 0) {
+            showInternalFeedbackSheet = true
+        }
+    }
     val effectiveOpenFeedback = {
         if (onOpenFeedback != null) {
             onOpenFeedback()
@@ -89,6 +100,22 @@ fun SiriniumAppContent(
         "light" -> false
         "dark" -> true
         else -> isSystemInDarkTheme()
+    }
+
+    val platformSettings: PlatformSettings = koinInject()
+
+    LaunchedEffect(isOnboardingCompleted) {
+        if (isOnboardingCompleted) {
+            val savedTarget = platformSettings.getString(ScheduleViewModel.KEY_CURRENT_TARGET, "")
+            val savedSection = platformSettings.getString(ScheduleViewModel.KEY_CURRENT_SECTION, "group")
+            if (savedTarget.isNotBlank() && scheduleViewModel.uiState.value.filter.target.isBlank()) {
+                scheduleViewModel.onIntent(ScheduleUiIntent.ChangeTarget(savedTarget, savedSection))
+                scheduleViewModel.onIntent(ScheduleUiIntent.ReloadFavorites)
+                scheduleViewModel.onIntent(ScheduleUiIntent.Refresh)
+                settingsViewModel.reloadFromPreferences()
+                compareViewModel.refreshFavorites()
+            }
+        }
     }
 
     SiriniumTheme(darkTheme = isDark, dynamicColor = activeDynamicColor) {
@@ -106,7 +133,10 @@ fun SiriniumAppContent(
                     onFinish = { target, sectionType ->
                         if (target.isNotBlank()) {
                             scheduleViewModel.onIntent(ScheduleUiIntent.ChangeTarget(target, sectionType))
+                            scheduleViewModel.onIntent(ScheduleUiIntent.ReloadFavorites)
                             scheduleViewModel.onIntent(ScheduleUiIntent.Refresh)
+                            settingsViewModel.reloadFromPreferences()
+                            compareViewModel.refreshFavorites()
                         }
                     },
                     modifier = modifier
