@@ -32,8 +32,47 @@ struct ScheduleWidgetEntry: TimelineEntry {
     let target: String
     let currentLesson: WidgetLesson?
     let nextLesson: WidgetLesson?
-    let upcomingLessonsToday: [WidgetLesson]
+    let upcomingLessons: [WidgetLesson]
     let state: LessonState
+}
+
+// MARK: - Date Formatting Helpers
+func relativeDayText(_ dateStr: String, relativeTo: Date = Date()) -> String {
+    let cleanDate = dateStr.trimmingCharacters(in: .whitespacesAndNewlines)
+    let parts: [Int]
+    if cleanDate.contains(".") {
+        parts = cleanDate.split(separator: ".").compactMap { Int($0) }
+    } else if cleanDate.contains("-") {
+        let raw = cleanDate.split(separator: "-").compactMap { Int($0) }
+        if raw.count == 3 && raw[0] > 1000 {
+            parts = [raw[2], raw[1], raw[0]]
+        } else {
+            parts = raw
+        }
+    } else {
+        return cleanDate
+    }
+
+    guard parts.count == 3 else { return cleanDate }
+    var comps = DateComponents()
+    comps.day = parts[0]
+    comps.month = parts[1]
+    comps.year = parts[2]
+
+    let calendar = Calendar.current
+    guard let targetDate = calendar.date(from: comps) else { return cleanDate }
+
+    if calendar.isDate(targetDate, inSameDayAs: relativeTo) {
+        return "Сегодня"
+    } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: relativeTo),
+              calendar.isDate(targetDate, inSameDayAs: tomorrow) {
+        return "Завтра"
+    } else {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "ru_RU")
+        df.dateFormat = "E, d MMM"
+        return df.string(from: targetDate).capitalized
+    }
 }
 
 // MARK: - Timeline Provider
@@ -69,7 +108,7 @@ struct SiriniumTimelineProvider: TimelineProvider {
                 numberPair: 2,
                 date: todayStr
             ),
-            upcomingLessonsToday: [],
+            upcomingLessons: [],
             state: .ongoing
         )
     }
@@ -86,29 +125,19 @@ struct SiriniumTimelineProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<ScheduleWidgetEntry>) -> Void) {
         let now = Date()
         let data = loadScheduleData()
-        let todayLessons = filterTodayLessons(data: data, for: now)
 
         var entries: [ScheduleWidgetEntry] = []
-        entries.append(createEntry(for: now, data: data, todayLessons: todayLessons))
+        entries.append(createEntry(for: now, data: data))
 
-        // Create timeline transition points for each lesson start & end today
-        for lesson in todayLessons {
+        // Create timeline transition points for all upcoming lesson starts & ends
+        let allLessons = data?.lessons ?? []
+        for lesson in allLessons {
             if let startDate = parseDateTime(dateStr: lesson.date, timeStr: lesson.startTime), startDate > now {
-                entries.append(createEntry(for: startDate, data: data, todayLessons: todayLessons))
+                entries.append(createEntry(for: startDate, data: data))
             }
             if let endDate = parseDateTime(dateStr: lesson.date, timeStr: lesson.endTime), endDate > now {
-                entries.append(createEntry(for: endDate, data: data, todayLessons: todayLessons))
+                entries.append(createEntry(for: endDate, data: data))
             }
-        }
-
-        // Also add transition points for earliest upcoming future lessons
-        let futureLessons = (data?.lessons ?? []).compactMap { lesson -> (WidgetLesson, Date)? in
-            guard let start = parseDateTime(dateStr: lesson.date, timeStr: lesson.startTime), start > now else { return nil }
-            return (lesson, start)
-        }.sorted { $0.1 < $1.1 }.prefix(4)
-
-        for (_, startDate) in futureLessons {
-            entries.append(createEntry(for: startDate, data: data))
         }
 
         // Sort unique entries by date
@@ -131,58 +160,33 @@ struct SiriniumTimelineProvider: TimelineProvider {
         return try? JSONDecoder().decode(WidgetScheduleData.self, from: jsonData)
     }
 
-    private func filterTodayLessons(data: WidgetScheduleData?, for date: Date) -> [WidgetLesson] {
-        guard let data = data else { return [] }
-        let calendar = Calendar.current
-        return data.lessons.filter { lesson in
-            guard let lessonDate = parseDateTime(dateStr: lesson.date, timeStr: lesson.startTime) else { return false }
-            return calendar.isDate(lessonDate, inSameDayAs: date)
-        }.sorted { $0.startTime < $1.startTime }
-    }
-
-    private func createEntry(for date: Date, data: WidgetScheduleData? = nil, todayLessons: [WidgetLesson]? = nil) -> ScheduleWidgetEntry {
+    private func createEntry(for date: Date, data: WidgetScheduleData? = nil) -> ScheduleWidgetEntry {
         let activeData = data ?? loadScheduleData()
         let target = activeData?.target.isEmpty == false ? activeData!.target : "Sirinium"
-        let lessons = todayLessons ?? filterTodayLessons(data: activeData, for: date)
+        let allLessons = activeData?.lessons ?? []
 
-        var ongoing: WidgetLesson? = nil
-        var upcoming: WidgetLesson? = nil
-        var laterLessons: [WidgetLesson] = []
-
-        for lesson in lessons {
-            guard let startDate = parseDateTime(dateStr: lesson.date, timeStr: lesson.startTime),
-                  let endDate = parseDateTime(dateStr: lesson.date, timeStr: lesson.endTime) else {
-                continue
+        // Parse and sort all lessons chronologically
+        let parsedLessons: [(lesson: WidgetLesson, start: Date, end: Date)] = allLessons.compactMap { lesson in
+            guard let start = parseDateTime(dateStr: lesson.date, timeStr: lesson.startTime),
+                  let end = parseDateTime(dateStr: lesson.date, timeStr: lesson.endTime) else {
+                return nil
             }
+            return (lesson, start, end)
+        }.sorted { $0.start < $1.start }
 
-            if date >= startDate && date < endDate {
-                ongoing = lesson
-            } else if date < startDate {
-                if upcoming == nil {
-                    upcoming = lesson
-                } else {
-                    laterLessons.append(lesson)
-                }
-            }
-        }
+        // Find currently ongoing lesson (date >= start && date < end)
+        let ongoing = parsedLessons.first { date >= $0.start && date < $0.end }?.lesson
 
-        // If no ongoing and no upcoming found today, search across all available lessons for future lessons
-        if ongoing == nil && upcoming == nil, let allLessons = activeData?.lessons {
-            let future = allLessons.compactMap { lesson -> (WidgetLesson, Date)? in
-                guard let start = parseDateTime(dateStr: lesson.date, timeStr: lesson.startTime) else { return nil }
-                return start > date ? (lesson, start) : nil
-            }.sorted { $0.1 < $1.1 }
+        // All future lessons starting strictly after `date`
+        let future = parsedLessons.filter { $0.start > date }.map { $0.lesson }
 
-            if let firstFuture = future.first {
-                upcoming = firstFuture.0
-                laterLessons = future.dropFirst().prefix(3).map { $0.0 }
-            }
-        }
+        let nextLesson = future.first
+        let subsequentLessons = Array(future.dropFirst().prefix(4))
 
         let state: LessonState
         if ongoing != nil {
             state = .ongoing
-        } else if upcoming != nil {
+        } else if nextLesson != nil {
             state = .upcoming
         } else {
             state = .completed
@@ -192,8 +196,8 @@ struct SiriniumTimelineProvider: TimelineProvider {
             date: date,
             target: target,
             currentLesson: ongoing,
-            nextLesson: upcoming,
-            upcomingLessonsToday: laterLessons,
+            nextLesson: nextLesson,
+            upcomingLessons: subsequentLessons,
             state: state
         )
     }
@@ -244,259 +248,335 @@ struct SiriniumTimelineProvider: TimelineProvider {
     }
 }
 
+// MARK: - System Background Modifier
 extension View {
     @ViewBuilder
-    func widgetBackground(_ color: Color) -> some View {
-        if #available(iOS 17.0, *) {
-            self.containerBackground(color, for: .widget)
+    func widgetBackground() -> some View {
+        if #available(iOSApplicationExtension 17.0, *) {
+            self.containerBackground(for: .widget) {
+                Color(uiColor: .secondarySystemGroupedBackground)
+            }
         } else {
-            self.background(color)
+            self.background(Color(uiColor: .secondarySystemGroupedBackground))
         }
     }
 }
 
-// MARK: - Widget Views
+// MARK: - Root Entry View
 struct SiriniumScheduleWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
     var entry: SiriniumTimelineProvider.Entry
-
-    private let bgDark = Color(red: 15/255, green: 23/255, blue: 42/255)       // #0F172A
-    private let cardDark = Color(red: 30/255, green: 41/255, blue: 59/255)     // #1E293B
-    private let accentIndigo = Color(red: 129/255, green: 140/255, blue: 248/255) // #818CF8
-    private let accentTeal = Color(red: 45/255, green: 212/255, blue: 191/255)  // #2DD4BF
 
     var body: some View {
         Group {
             switch family {
             case .systemSmall:
-                SmallWidgetView(entry: entry, bgDark: bgDark, cardDark: cardDark, accentIndigo: accentIndigo, accentTeal: accentTeal)
+                SmallWidgetView(entry: entry)
             case .systemMedium:
-                MediumWidgetView(entry: entry, bgDark: bgDark, cardDark: cardDark, accentIndigo: accentIndigo, accentTeal: accentTeal)
+                MediumWidgetView(entry: entry)
             default:
-                SmallWidgetView(entry: entry, bgDark: bgDark, cardDark: cardDark, accentIndigo: accentIndigo, accentTeal: accentTeal)
+                SmallWidgetView(entry: entry)
             }
         }
-        .widgetBackground(bgDark)
+        .widgetBackground()
         .widgetURL(URL(string: "sirinium://schedule"))
     }
 }
 
-// MARK: - Small Widget (Compact)
+// MARK: - Small Widget (Apple HIG Design)
 private struct SmallWidgetView: View {
     let entry: ScheduleWidgetEntry
-    let bgDark: Color
-    let cardDark: Color
-    let accentIndigo: Color
-    let accentTeal: Color
 
     var activeLesson: WidgetLesson? {
         entry.currentLesson ?? entry.nextLesson
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // Header: Target & Minimal State Indicator (Circle for current, arrow for next)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header: Target & Indicator
             HStack(alignment: .center) {
                 Text(entry.target)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
 
                 Spacer()
 
                 if entry.state == .ongoing {
                     Circle()
-                        .fill(accentTeal)
-                        .frame(width: 8, height: 8)
+                        .fill(Color.green)
+                        .frame(width: 7, height: 7)
                 } else if entry.state == .upcoming {
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(accentIndigo)
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Color.blue)
                 }
             }
-
-            Spacer(minLength: 2)
+            .padding(.bottom, 6)
 
             if let lesson = activeLesson {
-                // Time & Pair Number
+                // Status / Relative Day + Time Range
+                let dayLabel = relativeDayText(lesson.date, relativeTo: entry.date)
                 HStack(spacing: 4) {
-                    Text("\(lesson.startTime) – \(lesson.endTime)")
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(accentIndigo)
-
-                    if lesson.numberPair > 0 {
-                        Text("• \(lesson.numberPair) пара")
-                            .font(.system(size: 10, weight: .regular))
-                            .foregroundStyle(.white.opacity(0.6))
+                    if entry.state == .ongoing {
+                        Text("СЕЙЧАС")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.green)
+                    } else if dayLabel != "Сегодня" {
+                        Text(dayLabel.uppercased())
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Color.blue)
                     }
+
+                    Text("\(lesson.startTime) – \(lesson.endTime)")
+                        .font(.caption.monospacedDigit().weight(.medium))
+                        .foregroundStyle(.secondary)
                 }
+                .lineLimit(1)
+                .padding(.bottom, 3)
 
                 // Discipline Title
                 Text(lesson.discipline)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .font(.system(.subheadline, design: .default, weight: .bold))
+                    .foregroundStyle(.primary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Spacer(minLength: 2)
+                Spacer(minLength: 4)
 
-                // Classroom & Teacher
+                // Bottom Metadata: Room & Pair Number / Type
                 HStack(spacing: 6) {
                     if !lesson.classroom.isEmpty {
-                        HStack(spacing: 3) {
+                        HStack(spacing: 2) {
                             Image(systemName: "location.fill")
-                                .font(.system(size: 9))
-                                .foregroundStyle(accentTeal)
+                                .font(.system(size: 7))
                             Text(lesson.classroom)
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
+                                .font(.caption2.weight(.semibold))
                         }
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color(uiColor: .tertiarySystemFill))
+                        .clipShape(Capsule())
                     }
 
-                    if !lesson.teacher.isEmpty {
-                        Text(lesson.teacher)
-                            .font(.system(size: 9, weight: .regular))
-                            .foregroundStyle(.white.opacity(0.65))
+                    if lesson.numberPair > 0 {
+                        Text("\(lesson.numberPair) пара")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    } else if !lesson.rawLessonType.isEmpty {
+                        Text(lesson.rawLessonType)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }
             } else {
+                Spacer()
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Все пары завершены 🎉")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
+                    Image(systemName: "calendar.badge.checkmark")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Color.blue)
+                        .padding(.bottom, 2)
 
-                    Text("На сегодня занятий больше нет")
-                        .font(.system(size: 10, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.6))
+                    Text("Все пары завершены")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text("Отдыхайте!")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                Spacer(minLength: 2)
+                Spacer()
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(12)
     }
 }
 
-// MARK: - Medium Widget (Split view)
+// MARK: - Medium Widget (Apple HIG Design)
 private struct MediumWidgetView: View {
     let entry: ScheduleWidgetEntry
-    let bgDark: Color
-    let cardDark: Color
-    let accentIndigo: Color
-    let accentTeal: Color
 
     var activeLesson: WidgetLesson? {
         entry.currentLesson ?? entry.nextLesson
     }
 
+    // Subsequent lessons for right column
+    var subsequentLessons: [WidgetLesson] {
+        if entry.currentLesson != nil {
+            var list: [WidgetLesson] = []
+            if let next = entry.nextLesson {
+                list.append(next)
+            }
+            list.append(contentsOf: entry.upcomingLessons)
+            return Array(list.prefix(2))
+        } else {
+            return Array(entry.upcomingLessons.prefix(2))
+        }
+    }
+
     var body: some View {
-        HStack(spacing: 10) {
-            // Left Column: Active / Next Lesson Hero Card
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 12) {
+            // Left Column: Active / Next Lesson
+            VStack(alignment: .leading, spacing: 0) {
+                // Header: Target & Indicator
                 HStack(alignment: .center) {
                     Text(entry.target)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
 
                     Spacer()
 
                     if entry.state == .ongoing {
                         Circle()
-                            .fill(accentTeal)
-                            .frame(width: 8, height: 8)
+                            .fill(Color.green)
+                            .frame(width: 7, height: 7)
                     } else if entry.state == .upcoming {
                         Image(systemName: "arrow.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(accentIndigo)
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color.blue)
                     }
                 }
-
-                Spacer(minLength: 2)
+                .padding(.bottom, 6)
 
                 if let lesson = activeLesson {
-                    Text("\(lesson.startTime) – \(lesson.endTime)")
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(accentIndigo)
+                    let dayLabel = relativeDayText(lesson.date, relativeTo: entry.date)
+                    HStack(spacing: 4) {
+                        if entry.state == .ongoing {
+                            Text("СЕЙЧАС")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(Color.green)
+                        } else if dayLabel != "Сегодня" {
+                            Text(dayLabel.uppercased())
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(Color.blue)
+                        }
+
+                        Text("\(lesson.startTime) – \(lesson.endTime)")
+                            .font(.caption.monospacedDigit().weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .lineLimit(1)
+                    .padding(.bottom, 3)
 
                     Text(lesson.discipline)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .font(.system(.subheadline, design: .default, weight: .bold))
+                        .foregroundStyle(.primary)
                         .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: 4)
 
                     HStack(spacing: 6) {
                         if !lesson.classroom.isEmpty {
-                            Text("Ауд. \(lesson.classroom)")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(accentTeal)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(cardDark)
-                                .clipShape(RoundedRectangle(cornerRadius: 5))
+                            HStack(spacing: 2) {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 7))
+                                Text("Ауд. \(lesson.classroom)")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color(uiColor: .tertiarySystemFill))
+                            .clipShape(Capsule())
                         }
+
                         if !lesson.rawLessonType.isEmpty {
                             Text(lesson.rawLessonType)
-                                .font(.system(size: 9, weight: .regular))
-                                .foregroundStyle(.white.opacity(0.7))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
                     }
                 } else {
-                    Text("Пар на сегодня нет")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white)
-                    Text("Отличного дня и отдыха!")
-                        .font(.system(size: 10, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.6))
+                    Spacer()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Color.blue)
+                        Text("Пар нет")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text("Отличного отдыха!")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
                 }
-
-                Spacer(minLength: 2)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Divider()
-                .background(Color.white.opacity(0.15))
 
-            // Right Column: Subsequent lessons
-            VStack(alignment: .leading, spacing: 4) {
-                Text("ДАЛЕЕ")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.5))
+            // Right Column: Subsequent upcoming lessons
+            VStack(alignment: .leading, spacing: 0) {
+                let list = subsequentLessons
 
-                if !entry.upcomingLessonsToday.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(entry.upcomingLessonsToday.prefix(2)) { lesson in
-                            VStack(alignment: .leading, spacing: 1) {
-                                HStack {
-                                    Text(lesson.startTime)
-                                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                                        .foregroundStyle(accentIndigo)
+                if !list.isEmpty {
+                    let firstItem = list[0]
+                    let dayHeader = relativeDayText(firstItem.date, relativeTo: entry.date)
+                    let headerTitle = (dayHeader == "Сегодня" ? "ДАЛЕЕ" : dayHeader).uppercased()
+
+                    Text(headerTitle)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .padding(.bottom, 6)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(list) { item in
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(alignment: .center) {
+                                    Text(item.startTime)
+                                        .font(.caption.monospacedDigit().weight(.semibold))
+                                        .foregroundStyle(Color.blue)
+
+                                    let itemDay = relativeDayText(item.date, relativeTo: entry.date)
+                                    if itemDay != dayHeader && itemDay != "Сегодня" {
+                                        Text(itemDay)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+
                                     Spacer()
-                                    if !lesson.classroom.isEmpty {
-                                        Text(lesson.classroom)
-                                            .font(.system(size: 9, weight: .regular))
-                                            .foregroundStyle(.white.opacity(0.65))
+
+                                    if !item.classroom.isEmpty {
+                                        Text(item.classroom)
+                                            .font(.caption2.weight(.medium))
+                                            .foregroundStyle(.secondary)
                                     }
                                 }
-                                Text(lesson.discipline)
-                                    .font(.system(size: 11, weight: .regular))
-                                    .foregroundStyle(.white)
+
+                                Text(item.discipline)
+                                    .font(.caption.weight(.regular))
+                                    .foregroundStyle(.primary)
                                     .lineLimit(1)
                             }
                         }
                     }
+
+                    Spacer(minLength: 0)
                 } else {
-                    Spacer(minLength: 2)
+                    Text("ДАЛЕЕ")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .padding(.bottom, 6)
+
+                    Spacer()
+
                     Text("Больше пар нет")
-                        .font(.system(size: 10, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.45))
-                    Spacer(minLength: 2)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(12)
     }
 }
 

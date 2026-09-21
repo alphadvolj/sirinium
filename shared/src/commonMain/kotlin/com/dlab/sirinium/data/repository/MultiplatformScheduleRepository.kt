@@ -300,15 +300,36 @@ class MultiplatformScheduleRepository(
     }
 
     override suspend fun getUpcomingLessons(target: String, limit: Int): List<Lesson> {
-        val all = getTargetScheduleFlow(target).value
+        var all = getTargetScheduleFlow(target).value
         val today = DateTimeUtils.today()
         val todayEpoch = today.toEpochDays()
-        return all.mapNotNull { lesson ->
+        var upcoming = all.mapNotNull { lesson ->
             val parsed = DateTimeUtils.parseDate(lesson.date) ?: return@mapNotNull null
             if (parsed.toEpochDays() >= todayEpoch) {
                 Triple(parsed, lesson.startTime, lesson)
             } else null
-        }.sortedWith(compareBy({ it.first.toEpochDays() }, { it.second })).map { it.third }.take(limit)
+        }.sortedWith(compareBy({ it.first.toEpochDays() }, { it.second })).map { it.third }
+
+        if (upcoming.size < 6 && target.isNotBlank()) {
+            val currentOffset = DateTimeUtils.calculateWeekOffset(today)
+            val section = settings.getString("pref_current_section", "group").ifBlank { "group" }
+            try {
+                if (!isWeekLoaded(target, currentOffset)) {
+                    loadWeekSchedule(target, section, currentOffset)
+                }
+                if (!isWeekLoaded(target, currentOffset + 1)) {
+                    loadWeekSchedule(target, section, currentOffset + 1)
+                }
+                all = getTargetScheduleFlow(target).value
+                upcoming = all.mapNotNull { lesson ->
+                    val parsed = DateTimeUtils.parseDate(lesson.date) ?: return@mapNotNull null
+                    if (parsed.toEpochDays() >= todayEpoch) {
+                        Triple(parsed, lesson.startTime, lesson)
+                    } else null
+                }.sortedWith(compareBy({ it.first.toEpochDays() }, { it.second })).map { it.third }
+            } catch (_: Exception) {}
+        }
+        return upcoming.take(limit)
     }
 
     override suspend fun getLessonsForGroup(groupName: String): List<Lesson> {

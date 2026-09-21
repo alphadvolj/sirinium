@@ -126,7 +126,8 @@ fun OnboardingFlow(
                     state = state,
                     onBack = { currentStep = OnboardingStep.SHAKE },
                     onComplete = {
-                        currentStep = OnboardingStep.TUTORIAL
+                        onFinish(state.effectiveTarget, state.effectiveSectionType)
+                        onboardingViewModel.completeOnboarding()
                     }
                 )
             }

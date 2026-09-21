@@ -19,7 +19,7 @@
 		A10000000000000000000011 /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A10000000000000000000014 /* iosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000014 /* Sirinium.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Sirinium.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000015 /* SharedApp.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SharedApp.framework; path = "../shared/build/xcode-frameworks/SharedApp.framework"; sourceTree = "<group>"; };
 		A10000000000000000000016 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000000000000000000017 /* SiriniumWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SiriniumWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -70,7 +70,7 @@
 		A10000000000000000000043 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A10000000000000000000014 /* iosApp.app */,
+				A10000000000000000000014 /* Sirinium.app */,
 				A10000000000000000000017 /* SiriniumWidgetExtension.appex */,
 			);
 			name = Products;
@@ -113,7 +113,7 @@
 			);
 			name = iosApp;
 			productName = iosApp;
-			productReference = A10000000000000000000014 /* iosApp.app */;
+			productReference = A10000000000000000000014 /* Sirinium.app */;
 			productType = "com.apple.product-type.application";
 		};
 		A10000000000000000000003 /* SiriniumWidgetExtension */ = {
@@ -345,7 +345,7 @@
 					SharedApp,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.dlab.sirinium.ios;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = Sirinium;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -378,7 +378,7 @@
 					SharedApp,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.dlab.sirinium.ios;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = Sirinium;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

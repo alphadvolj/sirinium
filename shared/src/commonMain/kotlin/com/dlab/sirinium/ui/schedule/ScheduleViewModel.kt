@@ -72,6 +72,9 @@ class ScheduleViewModel(
         observeLessonMarkers()
         refreshAvailableSelectors()
         checkAndAutoLoadWeek(_uiState.value.filter.selectedDate)
+        DateTimeUtils.getWeekDatesForOffset(1).firstOrNull()?.let { nextWeekDate ->
+            checkAndAutoLoadWeek(nextWeekDate)
+        }
     }
 
     private fun observeLastUpdateTime() {
