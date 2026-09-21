@@ -78,9 +78,14 @@ fun ExpressiveScheduleTheme(
         else -> ExpressiveLightColorScheme
     }
 
+    val googleSansFamily = getGoogleSansFontFamily()
+    val typography = androidx.compose.runtime.remember(googleSansFamily) {
+        createExpressiveTypography(googleSansFamily)
+    }
+
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = ExpressiveTypography,
+        typography = typography,
         shapes = ExpressiveShapes,
         content = content
     )

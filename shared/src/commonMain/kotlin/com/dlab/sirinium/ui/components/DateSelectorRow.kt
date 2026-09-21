@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -203,7 +204,7 @@ fun DateSelectorRow(
                             Column(
                                 modifier = Modifier
                                     .width(44.dp)
-                                    .heightIn(min = 68.dp)
+                                    .height(68.dp)
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                                     .expressiveBounceClick(scaleDown = 0.92f) {
@@ -269,7 +270,7 @@ fun DateSelectorRow(
                             Column(
                                 modifier = Modifier
                                     .width(cardWidth)
-                                    .heightIn(min = 68.dp)
+                                    .height(68.dp)
                                     .clip(shape)
                                     .background(containerColor)
                                     .expressiveBounceClick(scaleDown = 0.92f) { onDateSelected(item.dateStr) }
@@ -314,7 +315,7 @@ fun DateSelectorRow(
                 modifier = Modifier
                     .padding(end = 16.dp)
                     .width(48.dp)
-                    .heightIn(min = 68.dp)
+                    .height(68.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .expressiveBounceClick(scaleDown = 0.90f) { showDatePicker = true },

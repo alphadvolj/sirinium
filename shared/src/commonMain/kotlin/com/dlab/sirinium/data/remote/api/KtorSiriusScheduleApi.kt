@@ -13,6 +13,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.http.encodeURLPathPart
 
 class KtorSiriusScheduleApi(
     private val client: HttpClient,
@@ -54,10 +55,15 @@ class KtorSiriusScheduleApi(
         date: String?,
         weekOffset: Int?
     ): List<ScheduleItemDto> {
-        return client.get("${baseUrl}api/schedule/group/$groupName") {
-            date?.let { parameter("date", it) }
-            weekOffset?.let { parameter("week_offset", it) }
-        }.body()
+        return try {
+            val encodedGroup = groupName.trim().encodeURLPathPart()
+            client.get("${baseUrl}api/schedule/group/$encodedGroup") {
+                date?.let { parameter("date", it) }
+                weekOffset?.let { parameter("week_offset", it) }
+            }.body()
+        } catch (_: Exception) {
+            getGroupScheduleByQuery(group = groupName, date = date, weekOffset = weekOffset)
+        }
     }
 
     override suspend fun getGroupScheduleByQuery(
@@ -79,10 +85,15 @@ class KtorSiriusScheduleApi(
         date: String?,
         weekOffset: Int?
     ): List<ScheduleItemDto> {
-        return client.get("${baseUrl}api/schedule/teacher/$teacher") {
-            date?.let { parameter("date", it) }
-            weekOffset?.let { parameter("week_offset", it) }
-        }.body()
+        return try {
+            val encodedTeacher = teacher.trim().encodeURLPathPart()
+            client.get("${baseUrl}api/schedule/teacher/$encodedTeacher") {
+                date?.let { parameter("date", it) }
+                weekOffset?.let { parameter("week_offset", it) }
+            }.body()
+        } catch (_: Exception) {
+            getTeacherScheduleByQuery(teacher = teacher, date = date, weekOffset = weekOffset)
+        }
     }
 
     override suspend fun getTeacherScheduleByQuery(
@@ -104,10 +115,15 @@ class KtorSiriusScheduleApi(
         date: String?,
         weekOffset: Int?
     ): List<ScheduleItemDto> {
-        return client.get("${baseUrl}api/schedule/classroom/$classroomName") {
-            date?.let { parameter("date", it) }
-            weekOffset?.let { parameter("week_offset", it) }
-        }.body()
+        return try {
+            val encodedRoom = classroomName.trim().encodeURLPathPart()
+            client.get("${baseUrl}api/schedule/classroom/$encodedRoom") {
+                date?.let { parameter("date", it) }
+                weekOffset?.let { parameter("week_offset", it) }
+            }.body()
+        } catch (_: Exception) {
+            getClassroomScheduleByQuery(classroom = classroomName, date = date, weekOffset = weekOffset)
+        }
     }
 
     override suspend fun getClassroomScheduleByQuery(
@@ -158,7 +174,12 @@ class KtorSiriusScheduleApi(
     }
 
     override suspend fun checkGroupByPath(groupQuery: String): CheckGroupResponseDto {
-        return client.get("${baseUrl}api/check/group/$groupQuery").body()
+        return try {
+            val encodedGroup = groupQuery.trim().encodeURLPathPart()
+            client.get("${baseUrl}api/check/group/$encodedGroup").body()
+        } catch (_: Exception) {
+            checkGroup(query = groupQuery, q = groupQuery)
+        }
     }
 
     override suspend fun checkTeacher(query: String?, q: String?): CheckTeacherResponseDto {
@@ -169,7 +190,12 @@ class KtorSiriusScheduleApi(
     }
 
     override suspend fun checkTeacherByPath(teacherQuery: String): CheckTeacherResponseDto {
-        return client.get("${baseUrl}api/check/teacher/$teacherQuery").body()
+        return try {
+            val encodedTeacher = teacherQuery.trim().encodeURLPathPart()
+            client.get("${baseUrl}api/check/teacher/$encodedTeacher").body()
+        } catch (_: Exception) {
+            checkTeacher(query = teacherQuery, q = teacherQuery)
+        }
     }
 
     override suspend fun getAppUpdate(): AppUpdateDto {

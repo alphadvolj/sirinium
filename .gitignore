@@ -62,3 +62,7 @@ release/
 
 # Temporary local screenshots
 ColorOS*.jpg
+
+# Temporary local fonts source folder
+static/
+/GoogleSans*.ttf

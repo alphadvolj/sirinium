@@ -165,7 +165,7 @@ fun MainScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
-                    .padding(top = 14.dp, end = 16.dp)
+                    .padding(top = 16.dp, end = 16.dp)
             ) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),

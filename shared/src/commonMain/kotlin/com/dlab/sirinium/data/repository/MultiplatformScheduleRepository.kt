@@ -3,6 +3,7 @@ package com.dlab.sirinium.data.repository
 import com.dlab.sirinium.core.model.Resource
 import com.dlab.sirinium.core.util.DateTimeUtils
 import com.dlab.sirinium.data.remote.api.SiriusScheduleApi
+import com.dlab.sirinium.data.remote.dto.ScheduleItemDto
 import com.dlab.sirinium.data.remote.dto.toDomain
 import com.dlab.sirinium.domain.model.Lesson
 import com.dlab.sirinium.domain.model.ScheduleFilter
@@ -16,8 +17,27 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+fun Lesson.toDto(): ScheduleItemDto = ScheduleItemDto(
+    sectionType = sectionType,
+    target = target,
+    date = date,
+    dayOfWeek = dayOfWeek,
+    startTime = startTime,
+    endTime = endTime,
+    discipline = discipline,
+    lessonType = rawLessonType.ifBlank { lessonType.title },
+    teacher = teacher,
+    classroom = classroom,
+    address = address,
+    onlineUrl = onlineUrl,
+    group = group,
+    numberPair = numberPair
+)
 
 class MultiplatformScheduleRepository(
     private val api: SiriusScheduleApi,
@@ -25,9 +45,16 @@ class MultiplatformScheduleRepository(
     private val noteRepository: LessonNoteRepository? = null
 ) : ScheduleRepository {
 
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        coerceInputValues = true
+    }
+
     private val cachedLessonsMap = mutableMapOf<String, MutableList<Lesson>>()
     private val loadedWeeks = mutableMapOf<String, MutableSet<Int>>()
     private val lastUpdateFlows = mutableMapOf<String, MutableStateFlow<Long>>()
+    private val scheduleFlows = mutableMapOf<String, MutableStateFlow<List<Lesson>>>()
 
     private var cachedGroups: List<String> = emptyList()
     private var cachedTeachers: List<String> = emptyList()
@@ -41,6 +68,41 @@ class MultiplatformScheduleRepository(
             if (teachersStr.isNotBlank()) cachedTeachers = teachersStr.split("\n").filter { it.isNotBlank() }
             val roomsStr = settings.getString("cached_classrooms", "")
             if (roomsStr.isNotBlank()) cachedClassrooms = roomsStr.split("\n").filter { it.isNotBlank() }
+        } catch (_: Exception) {}
+    }
+
+    private fun getTargetScheduleFlow(target: String): MutableStateFlow<List<Lesson>> {
+        return scheduleFlows.getOrPut(target) {
+            val loaded = loadCachedLessonsFromSettings(target)
+            cachedLessonsMap[target] = loaded.toMutableList()
+            MutableStateFlow(loaded)
+        }
+    }
+
+    private fun loadCachedLessonsFromSettings(target: String): List<Lesson> {
+        if (target.isBlank()) return emptyList()
+        val inMemory = cachedLessonsMap[target]
+        if (!inMemory.isNullOrEmpty()) return inMemory
+
+        return try {
+            val raw = settings.getString("cached_schedule_$target", "")
+            if (raw.isNotBlank()) {
+                val dtos = json.decodeFromString<List<ScheduleItemDto>>(raw)
+                dtos.map { it.toDomain(fallbackTarget = target) }
+            } else {
+                emptyList()
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun persistLessons(target: String, lessons: List<Lesson>) {
+        if (target.isBlank()) return
+        try {
+            val dtos = lessons.map { it.toDto() }
+            val raw = json.encodeToString(dtos)
+            settings.putString("cached_schedule_$target", raw)
         } catch (_: Exception) {}
     }
 
@@ -74,77 +136,57 @@ class MultiplatformScheduleRepository(
 
         val target = filter.target.trim()
         val sectionType = filter.sectionType
-        val selectedDate = filter.selectedDate
-
-        // 1. Emit cached data first
-        val cached = cachedLessonsMap[target]?.filter { lesson ->
-            val matchTarget = lesson.target.equals(target, ignoreCase = true)
-            val matchDate = selectedDate.isBlank() || lesson.date == selectedDate
-            val matchQuery = filter.searchQuery.isBlank() ||
-                    lesson.discipline.contains(filter.searchQuery, ignoreCase = true) ||
-                    lesson.teacher.contains(filter.searchQuery, ignoreCase = true) ||
-                    lesson.classroom.contains(filter.searchQuery, ignoreCase = true)
-            matchTarget && matchDate && matchQuery
-        } ?: emptyList()
-
-        if (cached.isNotEmpty()) {
-            emit(Resource.Success(cached.sortedBy { it.startTime }))
+        if (target.isBlank()) {
+            emit(Resource.Success(emptyList()))
+            return@flow
         }
 
-        // 2. Fetch fresh data from network
-        try {
-            val dt = DateTimeUtils.parseDate(selectedDate)
-            val weekOffset = if (dt != null) DateTimeUtils.calculateWeekOffset(dt) else 0
+        val targetFlow = getTargetScheduleFlow(target)
+        val initialCached = targetFlow.value
+        if (initialCached.isNotEmpty()) {
+            emit(Resource.Success(initialCached.sortedWith(compareBy({ it.date }, { it.startTime }))))
+        }
 
-            val items = when (sectionType) {
-                "teacher" -> api.getTeacherSchedule(teacher = target, weekOffset = weekOffset)
-                "classroom" -> api.getClassroomSchedule(classroomName = target, weekOffset = weekOffset)
-                else -> api.getGroupSchedule(groupName = target, weekOffset = weekOffset)
+        coroutineScope {
+            // Trigger preloading in background
+            launch {
+                try {
+                    preloadSchedule(target, sectionType)
+                } catch (_: Exception) {}
             }
 
-            val domainLessons = items.map { it.toDomain(fallbackTarget = target, forcedSectionType = sectionType) }
-
-            // Update in-memory cache
-            val targetLessons = cachedLessonsMap.getOrPut(target) { mutableListOf() }
-            targetLessons.removeAll { it.target.equals(target, ignoreCase = true) && domainLessons.any { fresh -> fresh.id == it.id } }
-            targetLessons.addAll(domainLessons)
-
-            markWeekLoaded(target, weekOffset)
-            setLastUpdateTime(target, Clock.System.now().toEpochMilliseconds())
-
-            val result = targetLessons.filter { lesson ->
-                val matchTarget = lesson.target.equals(target, ignoreCase = true)
-                val matchDate = selectedDate.isBlank() || lesson.date == selectedDate
-                val matchQuery = filter.searchQuery.isBlank() ||
-                        lesson.discipline.contains(filter.searchQuery, ignoreCase = true) ||
-                        lesson.teacher.contains(filter.searchQuery, ignoreCase = true) ||
-                        lesson.classroom.contains(filter.searchQuery, ignoreCase = true)
-                matchTarget && matchDate && matchQuery
-            }.sortedBy { it.startTime }
-
-            emit(Resource.Success(result))
-        } catch (e: Exception) {
-            if (cached.isEmpty()) {
-                emit(Resource.Error(e.message ?: "Не удалось загрузить расписание", e))
+            // Stream continuous updates whenever new lessons are added
+            targetFlow.collect { lessons ->
+                emit(Resource.Success(lessons.sortedWith(compareBy({ it.date }, { it.startTime }))))
             }
         }
     }
 
     override suspend fun preloadSchedule(target: String, sectionType: String): Resource<Unit> {
+        if (target.isBlank()) return Resource.Success(Unit)
         return coroutineScope {
-            try {
-                (-3..3).map { offset ->
-                    async { loadWeekSchedule(target, sectionType, offset) }
-                }.awaitAll()
-                setLastUpdateTime(target, Clock.System.now().toEpochMilliseconds())
-                Resource.Success(Unit)
-            } catch (e: Exception) {
-                Resource.Error(e.message ?: "Ошибка предзагрузки расписания", e)
+            // Load current week first
+            val week0Result = loadWeekSchedule(target, sectionType, 0)
+
+            // Preload adjacent weeks in parallel
+            val otherOffsets = listOf(1, -1, 2, -2, 3, -3)
+            val deferreds = otherOffsets.map { offset ->
+                async {
+                    try {
+                        loadWeekSchedule(target, sectionType, offset)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
             }
+            deferreds.awaitAll()
+            setLastUpdateTime(target, Clock.System.now().toEpochMilliseconds())
+            week0Result
         }
     }
 
     override suspend fun loadWeekSchedule(target: String, sectionType: String, weekOffset: Int): Resource<Unit> {
+        if (target.isBlank()) return Resource.Success(Unit)
         return try {
             val items = when (sectionType) {
                 "teacher" -> api.getTeacherSchedule(teacher = target, weekOffset = weekOffset)
@@ -152,10 +194,28 @@ class MultiplatformScheduleRepository(
                 else -> api.getGroupSchedule(groupName = target, weekOffset = weekOffset)
             }
             val domainLessons = items.map { it.toDomain(fallbackTarget = target, forcedSectionType = sectionType) }
-            val targetLessons = cachedLessonsMap.getOrPut(target) { mutableListOf() }
-            targetLessons.removeAll { it.target.equals(target, ignoreCase = true) && domainLessons.any { fresh -> fresh.id == it.id } }
+            val targetLessons = cachedLessonsMap.getOrPut(target) {
+                loadCachedLessonsFromSettings(target).toMutableList()
+            }
+
+            // Remove existing lessons for dates present in the fetched week
+            val fetchedDates = domainLessons.map { it.date }.filter { it.isNotBlank() }.toSet()
+            if (fetchedDates.isNotEmpty()) {
+                targetLessons.removeAll { it.target.equals(target, ignoreCase = true) && it.date in fetchedDates }
+            } else {
+                val weekDates = DateTimeUtils.getWeekDatesForOffset(weekOffset).toSet()
+                targetLessons.removeAll { it.target.equals(target, ignoreCase = true) && it.date in weekDates }
+            }
             targetLessons.addAll(domainLessons)
+
+            val sorted = targetLessons.sortedWith(compareBy({ it.date }, { it.startTime }))
             markWeekLoaded(target, weekOffset)
+            setLastUpdateTime(target, Clock.System.now().toEpochMilliseconds())
+
+            // Update reactive flow and persistent settings
+            getTargetScheduleFlow(target).value = sorted
+            persistLessons(target, sorted)
+
             Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Ошибка загрузки недели $weekOffset", e)
@@ -163,9 +223,12 @@ class MultiplatformScheduleRepository(
     }
 
     override suspend fun refreshSchedule(target: String, sectionType: String, date: String?): Resource<Unit> {
+        if (target.isBlank()) return Resource.Success(Unit)
         val dt = DateTimeUtils.parseDate(date ?: DateTimeUtils.todayFormatted())
         val weekOffset = if (dt != null) DateTimeUtils.calculateWeekOffset(dt) else 0
-        return loadWeekSchedule(target, sectionType, weekOffset)
+        val res = loadWeekSchedule(target, sectionType, weekOffset)
+        preloadSchedule(target, sectionType)
+        return res
     }
 
     override suspend fun getGroups(query: String?): Resource<List<String>> {
@@ -223,12 +286,12 @@ class MultiplatformScheduleRepository(
     }
 
     override suspend fun getUpcomingLessons(target: String, limit: Int): List<Lesson> {
-        val all = cachedLessonsMap[target] ?: emptyList()
+        val all = getTargetScheduleFlow(target).value
         val today = DateTimeUtils.todayFormatted()
-        return all.filter { it.date >= today }.sortedBy { "${it.date} ${it.startTime}" }.take(limit)
+        return all.filter { it.date >= today }.sortedWith(compareBy({ it.date }, { it.startTime })).take(limit)
     }
 
     override suspend fun getLessonsForGroup(groupName: String): List<Lesson> {
-        return cachedLessonsMap[groupName] ?: emptyList()
+        return getTargetScheduleFlow(groupName).value
     }
 }

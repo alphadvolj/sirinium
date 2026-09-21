@@ -146,6 +146,7 @@ fun ScheduleScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -188,7 +189,7 @@ fun ScheduleScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = state.filter.target,
+                            text = state.filter.target.ifBlank { "Выберите расписание" },
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -213,7 +214,7 @@ fun ScheduleScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
         ) {
 
             // 1. M3 Expressive Date Selector Strip (with static calendar button)
@@ -331,7 +332,8 @@ fun ScheduleScreen(
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             // Hero Card (if ongoing or upcoming lesson present on this day)
-                            activeHero?.let { (heroLesson, status) ->
+                            if (activeHero != null) {
+                                val (heroLesson, status) = activeHero
                                 item(key = "hero_${heroLesson.id}") {
                                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
                                         CurrentLessonHeroCard(
@@ -349,9 +351,21 @@ fun ScheduleScreen(
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             letterSpacing = 0.8.sp,
-                                            color = MaterialTheme.colorScheme.outline
+                                            color = MaterialTheme.colorScheme.outline,
+                                            modifier = Modifier.padding(start = 62.dp)
                                         )
                                     }
+                                }
+                            } else {
+                                item(key = "schedule_header_default") {
+                                    Text(
+                                        text = "РАСПИСАНИЕ НА ДЕНЬ",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 0.8.sp,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.padding(start = 78.dp, top = 4.dp, bottom = 4.dp)
+                                    )
                                 }
                             }
 
