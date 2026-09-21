@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -209,7 +210,7 @@ fun CompareScheduleScreen(
                     }
 
                     // Pair rows (1 to 7)
-                    items(state.comparisons, key = { it.pairNumber }) { item ->
+                    itemsIndexed(state.comparisons, key = { index, item -> "${item.pairNumber}_$index" }) { _, item ->
                         PairComparisonRow(
                             item = item,
                             entity1Name = state.entity1.name,

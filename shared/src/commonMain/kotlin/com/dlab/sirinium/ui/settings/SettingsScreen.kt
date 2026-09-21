@@ -68,6 +68,7 @@ import androidx.compose.material.icons.rounded.School
 import com.dlab.sirinium.platform.LocalPlatformActions
 import com.dlab.sirinium.ui.components.AvrVectorArt
 import com.dlab.sirinium.ui.components.DvoljVectorArt
+import com.dlab.sirinium.ui.components.SiriniumAppLogo
 import com.dlab.sirinium.ui.theme.expressiveBounceClick
 import kotlin.math.roundToInt
 
@@ -84,9 +85,10 @@ fun SettingsScreen(
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val platformActions = LocalPlatformActions.current
+    val isIos = remember { platformActions.getPlatformName().equals("iOS", ignoreCase = true) }
     var showClearNotesDialog by remember { mutableStateOf(false) }
 
-    val isEasterEggActive = state.isEasterEggUnlocked && state.isCustomIconEnabled
+    val isEasterEggActive = !isIos && state.isEasterEggUnlocked && state.isCustomIconEnabled
     val appDisplayName = if (isEasterEggActive) "Zernovium" else "Sirinium"
 
     LaunchedEffect(state.userMessage) {
@@ -145,19 +147,28 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Top left: Logo
-                    Box(
-                        modifier = Modifier
-                            .size(68.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                            .clickable { viewModel.onEasterEggLogoClick() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isEasterEggActive) Icons.Rounded.Person else Icons.Rounded.School,
-                            contentDescription = "$appDisplayName Logo",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(36.dp)
+                    if (isEasterEggActive) {
+                        Box(
+                            modifier = Modifier
+                                .size(68.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .clickable { if (!isIos) viewModel.onEasterEggLogoClick() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Person,
+                                contentDescription = "$appDisplayName Logo",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                    } else {
+                        SiriniumAppLogo(
+                            modifier = Modifier
+                                .expressiveBounceClick(scaleDown = 0.94f) {
+                                    if (!isIos) viewModel.onEasterEggLogoClick()
+                                }
                         )
                     }
 
@@ -552,34 +563,35 @@ fun SettingsScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Dynamic Color Switch
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Динамические цвета (Material You)",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = "Использовать цвета обоев системы",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.outline
+                        // Dynamic Color Switch (Android only)
+                        if (!isIos) {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Динамические цвета (Material You)",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "Использовать цвета обоев системы",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                }
+                                Switch(
+                                    checked = state.dynamicColor,
+                                    onCheckedChange = { viewModel.setDynamicColor(it) }
                                 )
                             }
-                            Switch(
-                                checked = state.dynamicColor,
-                                onCheckedChange = { viewModel.setDynamicColor(it) }
-                            )
                         }
 
-                        // Easter egg custom icon switch (visible ONLY when unlocked)
-                        if (state.isEasterEggUnlocked) {
+                        // Easter egg custom icon switch (visible ONLY on Android when unlocked)
+                        if (!isIos && state.isEasterEggUnlocked) {
                             Spacer(modifier = Modifier.height(14.dp))
                             HorizontalDivider(
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
@@ -806,7 +818,7 @@ fun SettingsScreen(
                         .padding(top = 16.dp, bottom = 8.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .expressiveBounceClick(scaleDown = 0.94f) {
-                            viewModel.onEasterEggLogoClick()
+                            if (!isIos) viewModel.onEasterEggLogoClick()
                         },
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically

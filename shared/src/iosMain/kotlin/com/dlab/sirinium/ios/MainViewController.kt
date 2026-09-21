@@ -17,6 +17,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,7 +32,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.ComposeUIViewController
 import com.dlab.sirinium.di.initKoin
 import com.dlab.sirinium.ui.SiriniumAppContent
+import com.dlab.sirinium.ui.components.FeedbackBottomSheet
 import org.koin.compose.KoinContext
+import platform.Foundation.NSNotificationCenter
+import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSUserDefaults
 import platform.UIKit.UIViewController
 import kotlin.experimental.ExperimentalNativeApi
@@ -148,8 +152,33 @@ fun MainViewController(): UIViewController {
                 }
             )
         } else {
+            var showFeedbackSheet by remember { mutableStateOf(false) }
+
+            DisposableEffect(Unit) {
+                val observer = NSNotificationCenter.defaultCenter.addObserverForName(
+                    name = "deviceDidShakeNotification",
+                    `object` = null,
+                    queue = NSOperationQueue.mainQueue
+                ) { _ ->
+                    val isExplicitlyDisabled = NSUserDefaults.standardUserDefaults.objectForKey("pref_shake_to_report") != null &&
+                            !NSUserDefaults.standardUserDefaults.boolForKey("pref_shake_to_report")
+                    if (!isExplicitlyDisabled) {
+                        showFeedbackSheet = true
+                    }
+                }
+                onDispose {
+                    NSNotificationCenter.defaultCenter.removeObserver(observer)
+                }
+            }
+
             KoinContext {
-                SiriniumAppContent()
+                SiriniumAppContent(
+                    onOpenFeedback = { showFeedbackSheet = true }
+                )
+
+                if (showFeedbackSheet) {
+                    FeedbackBottomSheet(onDismiss = { showFeedbackSheet = false })
+                }
             }
         }
     }

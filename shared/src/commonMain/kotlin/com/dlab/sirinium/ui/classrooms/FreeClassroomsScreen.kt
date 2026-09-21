@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -461,7 +462,7 @@ fun FreeClassroomsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                items(freeRoomsForPair, key = { it }) { room ->
+                                itemsIndexed(freeRoomsForPair, key = { index, room -> "${room}_$index" }) { _, room ->
                                     FreeRoomCard(
                                         roomName = room,
                                         pairNumber = state.selectedPair,

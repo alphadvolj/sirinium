@@ -9,7 +9,11 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.dlab.sirinium.ui.components.FeedbackBottomSheet
 import com.dlab.sirinium.ui.classrooms.FreeClassroomsViewModel
 import com.dlab.sirinium.ui.compare.CompareViewModel
 import com.dlab.sirinium.ui.onboarding.OnboardingFlow
@@ -26,7 +30,7 @@ import org.koin.compose.koinInject
 fun SiriniumAppContent(
     modifier: Modifier = Modifier,
     onRestartOnboarding: () -> Unit = {},
-    onOpenFeedback: () -> Unit = {},
+    onOpenFeedback: (() -> Unit)? = null,
     onRequestNotificationPermission: () -> Unit = {}
 ) {
     KoinContext {
@@ -61,7 +65,7 @@ fun SiriniumAppContent(
     appUpdateViewModel: AppUpdateViewModel,
     onboardingViewModel: OnboardingViewModel,
     onRestartOnboarding: () -> Unit = {},
-    onOpenFeedback: () -> Unit = {},
+    onOpenFeedback: (() -> Unit)? = null,
     onRequestNotificationPermission: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -71,6 +75,15 @@ fun SiriniumAppContent(
     val isOnboardingCompleted = onboardingState.isOnboardingCompleted
     val activeThemeMode = if (!isOnboardingCompleted) onboardingState.themeMode else settingsState.themeMode
     val activeDynamicColor = if (!isOnboardingCompleted) onboardingState.dynamicColor else settingsState.dynamicColor
+
+    var showInternalFeedbackSheet by remember { mutableStateOf(false) }
+    val effectiveOpenFeedback = {
+        if (onOpenFeedback != null) {
+            onOpenFeedback()
+        } else {
+            showInternalFeedbackSheet = true
+        }
+    }
 
     val isDark = when (activeThemeMode) {
         "light" -> false
@@ -109,11 +122,15 @@ fun SiriniumAppContent(
                         onboardingViewModel.resetOnboarding()
                         onRestartOnboarding()
                     },
-                    onOpenFeedback = onOpenFeedback,
+                    onOpenFeedback = effectiveOpenFeedback,
                     onRequestNotificationPermission = onRequestNotificationPermission,
                     modifier = modifier
                 )
             }
+        }
+
+        if (showInternalFeedbackSheet) {
+            FeedbackBottomSheet(onDismiss = { showInternalFeedbackSheet = false })
         }
     }
 }

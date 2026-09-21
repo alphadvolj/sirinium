@@ -370,7 +370,7 @@ fun ScheduleScreen(
                             }
 
                             // Daily Timeline Items
-                            itemsIndexed(pageLessons, key = { _, item -> item.id }) { index, lesson ->
+                            itemsIndexed(pageLessons, key = { index, item -> "${item.id}_$index" }) { index, lesson ->
                                 ScheduleTimelineItem(
                                     lesson = lesson,
                                     isFirst = index == 0,

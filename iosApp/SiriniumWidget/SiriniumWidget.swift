@@ -41,7 +41,10 @@ struct SiriniumTimelineProvider: TimelineProvider {
     typealias Entry = ScheduleWidgetEntry
 
     func placeholder(in context: Context) -> ScheduleWidgetEntry {
-        ScheduleWidgetEntry(
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd.MM.yyyy"
+        let todayStr = formatter.string(from: Date())
+        return ScheduleWidgetEntry(
             date: Date(),
             target: "К1609-241",
             currentLesson: WidgetLesson(
@@ -53,7 +56,7 @@ struct SiriniumTimelineProvider: TimelineProvider {
                 teacher: "Иванов И.И.",
                 rawLessonType: "Лекция",
                 numberPair: 1,
-                date: "2026-09-21"
+                date: todayStr
             ),
             nextLesson: WidgetLesson(
                 id: "2",
@@ -64,7 +67,7 @@ struct SiriniumTimelineProvider: TimelineProvider {
                 teacher: "Петров П.П.",
                 rawLessonType: "Практика",
                 numberPair: 2,
-                date: "2026-09-21"
+                date: todayStr
             ),
             upcomingLessonsToday: [],
             state: .ongoing
@@ -72,8 +75,12 @@ struct SiriniumTimelineProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ScheduleWidgetEntry) -> Void) {
-        let entry = createEntry(for: Date())
-        completion(entry)
+        if context.isPreview {
+            completion(placeholder(in: context))
+        } else {
+            let entry = createEntry(for: Date())
+            completion(entry)
+        }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ScheduleWidgetEntry>) -> Void) {
@@ -116,13 +123,20 @@ struct SiriniumTimelineProvider: TimelineProvider {
 
     private func filterTodayLessons(data: WidgetScheduleData?, for date: Date) -> [WidgetLesson] {
         guard let data = data else { return [] }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.locale = Locale(identifier: "ru_RU")
-        formatter.timeZone = TimeZone.current
-        let todayStr = formatter.string(from: date)
+        let formatterDot = DateFormatter()
+        formatterDot.dateFormat = "dd.MM.yyyy"
+        formatterDot.locale = Locale(identifier: "ru_RU")
+        formatterDot.timeZone = TimeZone.current
+        let todayDot = formatterDot.string(from: date)
 
-        return data.lessons.filter { $0.date == todayStr }.sorted { $0.startTime < $1.startTime }
+        let formatterDash = DateFormatter()
+        formatterDash.dateFormat = "yyyy-MM-dd"
+        formatterDash.locale = Locale(identifier: "ru_RU")
+        formatterDash.timeZone = TimeZone.current
+        let todayDash = formatterDash.string(from: date)
+
+        return data.lessons.filter { $0.date == todayDot || $0.date == todayDash }
+            .sorted { $0.startTime < $1.startTime }
     }
 
     private func createEntry(for date: Date, data: WidgetScheduleData? = nil, todayLessons: [WidgetLesson]? = nil) -> ScheduleWidgetEntry {
@@ -171,11 +185,18 @@ struct SiriniumTimelineProvider: TimelineProvider {
     }
 
     private func parseDateTime(dateStr: String, timeStr: String) -> Date? {
+        let cleanDate = dateStr.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanTime = timeStr.trimmingCharacters(in: .whitespacesAndNewlines)
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
         formatter.locale = Locale(identifier: "ru_RU")
         formatter.timeZone = TimeZone.current
-        return formatter.date(from: "\(dateStr) \(timeStr)")
+
+        if cleanDate.contains(".") {
+            formatter.dateFormat = "dd.MM.yyyy HH:mm"
+        } else {
+            formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        }
+        return formatter.date(from: "\(cleanDate) \(cleanTime)")
     }
 }
 
