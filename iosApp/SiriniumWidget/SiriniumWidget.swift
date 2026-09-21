@@ -211,36 +211,36 @@ func getLessonBadges(lesson: WidgetLesson, sectionType: String) -> [LessonBadgeI
 
     switch sectionType.lowercased() {
     case "teacher":
-        // Если выбран преподаватель: показывай группу и аудиторию
-        if !cleanGroup.isEmpty {
-            badges.append(LessonBadgeInfo(icon: "person.2.fill", text: cleanGroup))
-        }
+        // Для преподавателей: вверху аудитория, снизу группа
         if !cleanClassroom.isEmpty {
             badges.append(LessonBadgeInfo(icon: "location.fill", text: cleanClassroom))
+        }
+        if !cleanGroup.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "person.2.fill", text: cleanGroup))
         }
         if badges.isEmpty && !cleanTeacher.isEmpty {
             badges.append(LessonBadgeInfo(icon: "person.fill", text: cleanTeacher))
         }
 
     case "classroom", "auditorium":
-        // Если выбрана аудитория: показывай Фамилию и инициалы преподавателя и группу
-        if !cleanTeacher.isEmpty {
-            badges.append(LessonBadgeInfo(icon: "person.fill", text: cleanTeacher))
-        }
+        // Для аудиторий: вверху группа, снизу преподаватель
         if !cleanGroup.isEmpty {
             badges.append(LessonBadgeInfo(icon: "person.2.fill", text: cleanGroup))
+        }
+        if !cleanTeacher.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "person.fill", text: cleanTeacher))
         }
         if badges.isEmpty && !cleanClassroom.isEmpty {
             badges.append(LessonBadgeInfo(icon: "location.fill", text: cleanClassroom))
         }
 
     default:
-        // По умолчанию (если выбрана группа): показывай Фамилию и инициалы преподавателя и аудиторию
-        if !cleanTeacher.isEmpty {
-            badges.append(LessonBadgeInfo(icon: "person.fill", text: cleanTeacher))
-        }
+        // Для групп: вверху аудитория, внизу преподаватель
         if !cleanClassroom.isEmpty {
             badges.append(LessonBadgeInfo(icon: "location.fill", text: cleanClassroom))
+        }
+        if !cleanTeacher.isEmpty {
+            badges.append(LessonBadgeInfo(icon: "person.fill", text: cleanTeacher))
         }
         if badges.isEmpty && !cleanGroup.isEmpty {
             badges.append(LessonBadgeInfo(icon: "person.2.fill", text: cleanGroup))
@@ -633,9 +633,9 @@ private struct SmallWidgetView: View {
 
                 Spacer(minLength: 4)
 
-                // Bottom Metadata: Entity Badges (Teacher, Room, Group)
+                // Bottom Metadata: Entity Badges in a COLUMN (VStack)
                 let badges = getLessonBadges(lesson: lesson, sectionType: entry.sectionType)
-                HStack(spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     ForEach(badges) { badge in
                         HStack(spacing: 2) {
                             Image(systemName: badge.icon)
@@ -757,12 +757,37 @@ private struct MediumWidgetView: View {
                     Spacer(minLength: 4)
 
                     let badges = getLessonBadges(lesson: lesson, sectionType: entry.sectionType)
-                    HStack(spacing: 4) {
-                        ForEach(badges) { badge in
+                    VStack(alignment: .leading, spacing: 3) {
+                        if let firstBadge = badges.first {
+                            HStack(spacing: 4) {
+                                HStack(spacing: 2) {
+                                    Image(systemName: firstBadge.icon)
+                                        .font(.system(size: 7))
+                                    Text(firstBadge.text)
+                                        .font(.caption2.weight(.semibold))
+                                        .lineLimit(1)
+                                }
+                                .foregroundStyle(.primary)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color(uiColor: .tertiarySystemFill))
+                                .clipShape(Capsule())
+
+                                if !lesson.rawLessonType.isEmpty {
+                                    Text(lesson.rawLessonType)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+
+                        if badges.count > 1 {
+                            let secondBadge = badges[1]
                             HStack(spacing: 2) {
-                                Image(systemName: badge.icon)
+                                Image(systemName: secondBadge.icon)
                                     .font(.system(size: 7))
-                                Text(badge.text)
+                                Text(secondBadge.text)
                                     .font(.caption2.weight(.semibold))
                                     .lineLimit(1)
                             }
@@ -771,13 +796,6 @@ private struct MediumWidgetView: View {
                             .padding(.vertical, 2)
                             .background(Color(uiColor: .tertiarySystemFill))
                             .clipShape(Capsule())
-                        }
-
-                        if !lesson.rawLessonType.isEmpty {
-                            Text(lesson.rawLessonType)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
                         }
                     }
                 } else {
@@ -832,9 +850,9 @@ private struct MediumWidgetView: View {
 
                                     Spacer()
 
-                                    let itemBadges = getLessonBadges(lesson: item, sectionType: entry.sectionType)
-                                    if !itemBadges.isEmpty {
-                                        Text(itemBadges.map { $0.text }.joined(separator: " • "))
+                                    let loc = formatLocation(item.classroom)
+                                    if !loc.isEmpty {
+                                        Text(loc)
                                             .font(.caption2.weight(.medium))
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
