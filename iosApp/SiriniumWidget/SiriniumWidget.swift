@@ -524,15 +524,27 @@ struct SiriniumTimelineProvider: TimelineProvider {
 }
 
 // MARK: - System Background Modifier
+private struct WidgetBackgroundView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        if colorScheme == .dark {
+            Color.black
+        } else {
+            Color(uiColor: .secondarySystemGroupedBackground)
+        }
+    }
+}
+
 extension View {
     @ViewBuilder
     func widgetBackground() -> some View {
         if #available(iOSApplicationExtension 17.0, *) {
             self.containerBackground(for: .widget) {
-                Color(uiColor: .secondarySystemGroupedBackground)
+                WidgetBackgroundView()
             }
         } else {
-            self.background(Color(uiColor: .secondarySystemGroupedBackground))
+            self.background(WidgetBackgroundView())
         }
     }
 }
@@ -758,36 +770,11 @@ private struct MediumWidgetView: View {
 
                     let badges = getLessonBadges(lesson: lesson, sectionType: entry.sectionType)
                     VStack(alignment: .leading, spacing: 3) {
-                        if let firstBadge = badges.first {
-                            HStack(spacing: 4) {
-                                HStack(spacing: 2) {
-                                    Image(systemName: firstBadge.icon)
-                                        .font(.system(size: 7))
-                                    Text(firstBadge.text)
-                                        .font(.caption2.weight(.semibold))
-                                        .lineLimit(1)
-                                }
-                                .foregroundStyle(.primary)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Color(uiColor: .tertiarySystemFill))
-                                .clipShape(Capsule())
-
-                                if !lesson.rawLessonType.isEmpty {
-                                    Text(lesson.rawLessonType)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
-                            }
-                        }
-
-                        if badges.count > 1 {
-                            let secondBadge = badges[1]
+                        ForEach(badges) { badge in
                             HStack(spacing: 2) {
-                                Image(systemName: secondBadge.icon)
+                                Image(systemName: badge.icon)
                                     .font(.system(size: 7))
-                                Text(secondBadge.text)
+                                Text(badge.text)
                                     .font(.caption2.weight(.semibold))
                                     .lineLimit(1)
                             }
